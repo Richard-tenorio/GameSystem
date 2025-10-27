@@ -1,16 +1,25 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Add Book</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Book - Library</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Add a New Book</h1>
-    <form method="POST">
-        <input type="text" name="title" placeholder="Book Title" required><br>
-        <input type="text" name="author" placeholder="Author" required><br>
-        <button type="submit">Add Book</button>
-    </form>
-    <a href="/">Back to Library</a>
+  <div class="container">
+    <h1>📚 Add a Book</h1>
+
+    <div class="form">
+      <input type="text" id="title" placeholder="Book Title">
+      <input type="text" id="author" placeholder="Author">
+      <button onclick="addBook()">Add Book</button>
+    </div>
+
+    <h2>Book List</h2>
+    <ul id="book-list"></ul>
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
