@@ -2,12 +2,11 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-# In-memory book storage
-books = []
+books = []  # temporary book storage
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('add_book.html')  # <-- your HTML file here
 
 @app.route('/get_books')
 def get_books():
