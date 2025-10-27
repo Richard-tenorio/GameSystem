@@ -1,24 +1,25 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Library Storage</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Library Storage</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  <div class="container">
     <h1>📚 Library Storage</h1>
-    <a href="/add" class="btn">Add New Book</a>
 
-    <table>
-        <tr>
-            <th>Title</th>
-            <th>Author</th>
-        </tr>
-        {% for book in books %}
-        <tr>
-            <td>{{ book.title }}</td>
-            <td>{{ book.author }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+    <div class="form">
+      <input type="text" id="title" placeholder="Book Title">
+      <input type="text" id="author" placeholder="Author">
+      <button onclick="addBook()">Add Book</button>
+    </div>
+
+    <h2>Book List</h2>
+    <ul id="book-list"></ul>
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
