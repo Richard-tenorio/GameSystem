@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Student - Library</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>🎓 Student Library</h1>
+    <button onclick="location.href='/logout'">Logout</button>
+
+    <h2>Available Books</h2>
+    <ul id="book-list"></ul>
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
