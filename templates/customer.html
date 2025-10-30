@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Customer - Game Rentals</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Welcome Customer, {{ session['username'] }}</h1>
+
+    <h2>Available Games</h2>
+    <table>
+        <tr>
+            <th>Title</th>
+            <th>Platform</th>
+            <th>Quantity</th>
+            <th>Action</th>
+        </tr>
+        
+        {% for game in games %}
+        <tr>
+            <td>{{ game.title }}</td>
+            
+            <td>{{ game.platform }}</td>
+            
+            <td>{{ game.quantity }}</td>
+            
+            <td>
+                {% if game.quantity > 0 %}
+                    <a href="/rent/{{ game.id }}" class="rent-link">Rent</a>
+                {% else %}
+                    Out of stock
+                {% endif %}
+                
+                <a href="/return_game/{{ game.id }}" class="return-link">Return Game</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+    <a href="/logout">Logout</a>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

@@ -1,97 +1,118 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session
+import mysql.connector
+import os
 
 app = Flask(__name__)
-app.secret_key = 'library_secret_key'
+# WARNING: In a production app, use a strong, secret key loaded from environment variables
+app.secret_key = os.urandom(24) 
 
-# Simple in-memory data
-users = {
-    "admin": {"password": "admin123", "role": "admin"},
-    "student": {"password": "student123", "role": "student"}
-}
+# ---------- DATABASE CONNECTION ----------
+# Ensure your MySQL server is running and the database 'gaming_rental_db' exists.
+db = mysql.connector.connect(
+    host="localhost",
+    user="root",        # your MySQL username
+    password="",        # your MySQL password if any
+    database="gaming_rental_db" # UPDATED: Database name for game rental
+)
+cursor = db.cursor(dictionary=True)
 
-books = [
-    {"title": "Python Basics", "author": "John Doe", "copies": 3},
-    {"title": "Flask Guide", "author": "Jane Smith", "copies": 2}
-]
-
-@app.route('/')
+# ---------- LOGIN (Root Route) ----------
+@app.route("/", methods=["GET", "POST"])
 def login():
-    return render_template('login.html')
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
 
-@app.route('/login', methods=['POST'])
-def do_login():
-    username = request.form.get('username')
-    password = request.form.get('password')
+        cursor.execute("SELECT * FROM users WHERE username=%s AND password=%s", (username, password))
+        user = cursor.fetchone()
 
-    user = users.get(username)
-    if user and user["password"] == password:
-        session["user"] = username
-        session["role"] = user["role"]
-        if user["role"] == "admin":
-            return redirect(url_for('admin_page'))
+        if user:
+            session["username"] = user["username"]
+            session["role"] = user["role"]
+
+            if user["role"] == "admin":
+                return redirect(url_for("admin"))
+            else:
+                # UPDATED: Redirect to 'customer'
+                return redirect(url_for("customer"))
         else:
-            return redirect(url_for('student_page'))
-    return render_template('login.html', error="Invalid credentials")
+            # Renders login.html
+            return render_template("login.html", error="Invalid username or password")
 
-@app.route('/logout')
+    # Renders login.html
+    return render_template("login.html")
+
+# ---------- ADMIN DASHBOARD ----------
+@app.route("/admin")
+def admin():
+    if "username" not in session or session["role"] != "admin":
+        return redirect(url_for("login"))
+
+    # UPDATED: Select from 'games' table
+    cursor.execute("SELECT * FROM games")
+    games = cursor.fetchall()
+    # Renders admin.html
+    return render_template("admin.html", games=games)
+
+# ---------- ADMIN: ADD GAME ----------
+@app.route("/add_game", methods=["POST"])
+def add_game():
+    if "username" in session and session["role"] == "admin":
+        title = request.form["title"]
+        # UPDATED: Changed 'author' to 'platform'
+        platform = request.form["platform"] 
+        # UPDATED: Changed 'copies' to 'quantity'
+        quantity = request.form["quantity"]
+
+        # UPDATED: Insert into 'games' table with new columns
+        cursor.execute("INSERT INTO games (title, platform, quantity) VALUES (%s, %s, %s)", (title, platform, quantity))
+        db.commit()
+    return redirect(url_for("admin"))
+
+# ---------- ADMIN: REMOVE GAME ----------
+@app.route("/remove_game/<int:game_id>")
+def remove_game(game_id):
+    if "username" in session and session["role"] == "admin":
+        # UPDATED: Delete from 'games' table
+        cursor.execute("DELETE FROM games WHERE id=%s", (game_id,))
+        db.commit()
+    return redirect(url_for("admin"))
+
+# ---------- CUSTOMER DASHBOARD (formerly STUDENT) ----------
+@app.route("/customer")
+def customer():
+    if "username" not in session or session["role"] != "customer":
+        return redirect(url_for("login"))
+
+    # UPDATED: Select from 'games' table
+    cursor.execute("SELECT * FROM games")
+    games = cursor.fetchall()
+    # Renders customer.html
+    return render_template("customer.html", games=games)
+
+# ---------- CUSTOMER: RENT (formerly BORROW) ----------
+@app.route("/rent/<int:game_id>")
+def rent(game_id):
+    if "username" in session and session["role"] == "customer":
+        # UPDATED: Update 'quantity' column in 'games' table
+        cursor.execute("UPDATE games SET quantity = quantity - 1 WHERE id=%s AND quantity > 0", (game_id,))
+        db.commit()
+    return redirect(url_for("customer"))
+
+# ---------- CUSTOMER: RETURN GAME (formerly RETURN BOOK) ----------
+@app.route("/return_game/<int:game_id>")
+def return_game(game_id):
+    if "username" in session and session["role"] == "customer":
+        # UPDATED: Update 'quantity' column in 'games' table
+        cursor.execute("UPDATE games SET quantity = quantity + 1 WHERE id=%s", (game_id,))
+        db.commit()
+    return redirect(url_for("customer"))
+
+# ---------- LOGOUT ----------
+@app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for('login'))
+    return redirect(url_for("login"))
 
-@app.route('/admin')
-def admin_page():
-    if session.get("role") != "admin":
-        return redirect(url_for('login'))
-    return render_template('admin.html', books=books)
-
-@app.route('/student')
-def student_page():
-    if session.get("role") != "student":
-        return redirect(url_for('login'))
-    return render_template('student.html', books=books)
-
-# ----- Admin Features -----
-@app.route('/add_book', methods=['POST'])
-def add_book():
-    if session.get("role") != "admin":
-        return jsonify({"success": False, "message": "Unauthorized"})
-    title = request.form.get('title')
-    author = request.form.get('author')
-    copies = int(request.form.get('copies', 1))
-    books.append({"title": title, "author": author, "copies": copies})
-    return jsonify({"success": True})
-
-@app.route('/remove_book', methods=['POST'])
-def remove_book():
-    if session.get("role") != "admin":
-        return jsonify({"success": False, "message": "Unauthorized"})
-    title = request.form.get('title')
-    global books
-    books = [b for b in books if b["title"] != title]
-    return jsonify({"success": True})
-
-# ----- Student Features -----
-@app.route('/borrow_book', methods=['POST'])
-def borrow_book():
-    title = request.form.get('title')
-    for b in books:
-        if b["title"] == title and b["copies"] > 0:
-            b["copies"] -= 1
-            return jsonify({"success": True})
-    return jsonify({"success": False})
-
-@app.route('/return_book', methods=['POST'])
-def return_book():
-    title = request.form.get('title')
-    for b in books:
-        if b["title"] == title:
-            b["copies"] += 1
-            return jsonify({"success": True})
-    return jsonify({"success": False})
-
-@app.route('/get_books')
-def get_books():
-    return jsonify(books)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)

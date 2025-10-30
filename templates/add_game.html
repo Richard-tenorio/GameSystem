@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Add Game</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="box">
+        <h1>Add Game</h1>
+        
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+        
+        <form method="POST" action="{{ url_for('add_game') }}">
+            <input type="text" name="title" placeholder="Game Title" required><br>
+            <input type="text" name="platform" placeholder="Platform (e.g., PS5, Switch)" required><br>
+            <input type="number" name="quantity" value="1" min="1" required><br>
+            
+            <button type="submit">Add Game to Inventory</button>
+        </form>
+        
+        <p><a href="{{ url_for('admin') }}">← Back to Admin Dashboard</a></p>
+    </div>
+</body>
+</html>

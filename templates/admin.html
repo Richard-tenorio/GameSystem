@@ -1,24 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Admin - Library</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Admin - Game Rental Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <div class="container">
-    <h1>👨‍💼 Admin Panel</h1>
-    <button onclick="location.href='/logout'">Logout</button>
+    <h1>Welcome, {{ session['username'] }}</h1>
 
-    <h2>Add Book</h2>
-    <input type="text" id="title" placeholder="Title">
-    <input type="text" id="author" placeholder="Author">
-    <input type="number" id="copies" placeholder="Copies" min="1" value="1">
-    <button onclick="addBook()">Add</button>
+    <h2>Add New Game</h2>
+    <form method="post" action="/add_game">
+        <input type="text" name="title" placeholder="Game Title" required>
+        <input type="text" name="platform" placeholder="Platform (e.g., PS5, Xbox)" required>
+        <input type="number" name="quantity" placeholder="Quantity" required>
+        <button type="submit">Add Game</button>
+    </form>
 
-    <h2>Book List</h2>
-    <ul id="book-list"></ul>
-  </div>
+    <h2>Game Inventory List</h2>
+    <table>
+        <tr><th>Title</th><th>Platform</th><th>Quantity</th><th>Action</th></tr>
+        
+        {% for game in games %}
+        <tr>
+            <td>{{ game.title }}</td>
+            
+            <td>{{ game.platform }}</td>
+            
+            <td>{{ game.quantity }}</td>
+            
+            <td>
+                <a href="/remove_game/{{ game.id }}" class="remove-link">Remove Game</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
 
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <br>
+    <a href="/logout">Logout</a>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
