@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 import mysql.connector
 import os
 
@@ -12,7 +12,7 @@ db = mysql.connector.connect(
     host="localhost",
     user="root",        # your MySQL username
     password="",        # your MySQL password if any
-    database="gaming_rental_db" # UPDATED: Database name for game rental
+    database="gaming_rental_db"
 )
 cursor = db.cursor(dictionary=True)
 
@@ -33,14 +33,38 @@ def login():
             if user["role"] == "admin":
                 return redirect(url_for("admin"))
             else:
-                # UPDATED: Redirect to 'customer'
                 return redirect(url_for("customer"))
         else:
-            # Renders login.html
             return render_template("login.html", error="Invalid username or password")
 
-    # Renders login.html
     return render_template("login.html")
+
+# ---------- ACCOUNT REGISTRATION ----------
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    error = None
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        role = "customer" 
+
+        try:
+            cursor.execute("SELECT * FROM users WHERE username=%s", (username,))
+            if cursor.fetchone():
+                error = "Username already exists. Please choose another."
+            else:
+                cursor.execute(
+                    "INSERT INTO users (username, password, role) VALUES (%s, %s, %s)", 
+                    (username, password, role)
+                )
+                db.commit()
+                return redirect(url_for("login"))
+        
+        except Exception as e:
+            db.rollback()
+            error = f"An internal error occurred." 
+
+    return render_template("register.html", error=error)
 
 # ---------- ADMIN DASHBOARD ----------
 @app.route("/admin")
@@ -48,10 +72,8 @@ def admin():
     if "username" not in session or session["role"] != "admin":
         return redirect(url_for("login"))
 
-    # UPDATED: Select from 'games' table
     cursor.execute("SELECT * FROM games")
     games = cursor.fetchall()
-    # Renders admin.html
     return render_template("admin.html", games=games)
 
 # ---------- ADMIN: ADD GAME ----------
@@ -59,12 +81,9 @@ def admin():
 def add_game():
     if "username" in session and session["role"] == "admin":
         title = request.form["title"]
-        # UPDATED: Changed 'author' to 'platform'
         platform = request.form["platform"] 
-        # UPDATED: Changed 'copies' to 'quantity'
         quantity = request.form["quantity"]
 
-        # UPDATED: Insert into 'games' table with new columns
         cursor.execute("INSERT INTO games (title, platform, quantity) VALUES (%s, %s, %s)", (title, platform, quantity))
         db.commit()
     return redirect(url_for("admin"))
@@ -73,37 +92,32 @@ def add_game():
 @app.route("/remove_game/<int:game_id>")
 def remove_game(game_id):
     if "username" in session and session["role"] == "admin":
-        # UPDATED: Delete from 'games' table
         cursor.execute("DELETE FROM games WHERE id=%s", (game_id,))
         db.commit()
     return redirect(url_for("admin"))
 
-# ---------- CUSTOMER DASHBOARD (formerly STUDENT) ----------
+# ---------- CUSTOMER DASHBOARD ----------
 @app.route("/customer")
 def customer():
     if "username" not in session or session["role"] != "customer":
         return redirect(url_for("login"))
 
-    # UPDATED: Select from 'games' table
     cursor.execute("SELECT * FROM games")
     games = cursor.fetchall()
-    # Renders customer.html
     return render_template("customer.html", games=games)
 
-# ---------- CUSTOMER: RENT (formerly BORROW) ----------
+# ---------- CUSTOMER: RENT ----------
 @app.route("/rent/<int:game_id>")
 def rent(game_id):
     if "username" in session and session["role"] == "customer":
-        # UPDATED: Update 'quantity' column in 'games' table
         cursor.execute("UPDATE games SET quantity = quantity - 1 WHERE id=%s AND quantity > 0", (game_id,))
         db.commit()
     return redirect(url_for("customer"))
 
-# ---------- CUSTOMER: RETURN GAME (formerly RETURN BOOK) ----------
+# ---------- CUSTOMER: RETURN GAME ----------
 @app.route("/return_game/<int:game_id>")
 def return_game(game_id):
     if "username" in session and session["role"] == "customer":
-        # UPDATED: Update 'quantity' column in 'games' table
         cursor.execute("UPDATE games SET quantity = quantity + 1 WHERE id=%s", (game_id,))
         db.commit()
     return redirect(url_for("customer"))
