@@ -24,6 +24,18 @@
         <button type="submit">Add Game</button>
     </form>
 
+    <h2>Update Game Quantity</h2>
+    <form method="post" action="{{ url_for('update_quantity') }}">
+        <select name="game_id" required>
+            <option value="">Select Game</option>
+            {% for game in games %}
+            <option value="{{ game.id }}">{{ game.title }} ({{ game.platform }}) - Current: {{ game.quantity }}</option>
+            {% endfor %}
+        </select>
+        <input type="number" name="additional_quantity" placeholder="Additional Quantity" min="1" required>
+        <button type="submit">Update Quantity</button>
+    </form>
+
     <h2>Game Inventory List</h2>
     <table>
         <tr>

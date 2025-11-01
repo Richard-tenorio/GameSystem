@@ -99,6 +99,22 @@ def add_game():
             flash("Error adding game.", "error")
     return redirect(url_for("admin"))
 
+# ---------- ADMIN: UPDATE GAME QUANTITY ----------
+@app.route("/update_quantity", methods=["POST"])
+def update_quantity():
+    if "username" in session and session["role"] == "admin":
+        game_id = request.form["game_id"]
+        additional_quantity = request.form["additional_quantity"]
+
+        try:
+            cursor.execute("UPDATE games SET quantity = quantity + %s WHERE id=%s", (additional_quantity, game_id))
+            db.commit()
+            flash("Game quantity updated successfully.", "success")
+        except Exception as e:
+            db.rollback()
+            flash("Error updating game quantity.", "error")
+    return redirect(url_for("admin"))
+
 # ---------- ADMIN: REMOVE GAME ----------
 @app.route("/remove_game/<int:game_id>")
 def remove_game(game_id):
