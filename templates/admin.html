@@ -24,20 +24,8 @@
         <button type="submit">Add Game</button>
     </form>
 
-    <h2>Update Game Quantity</h2>
-    <form method="post" action="{{ url_for('update_quantity') }}">
-        <select name="game_id" required>
-            <option value="">Select Game</option>
-            {% for game in games %}
-            <option value="{{ game.id }}">{{ game.title }} ({{ game.platform }}) - Current: {{ game.quantity }}</option>
-            {% endfor %}
-        </select>
-        <input type="number" name="additional_quantity" placeholder="Additional Quantity" min="1" required>
-        <button type="submit">Update Quantity</button>
-    </form>
-
     <h2>Game Inventory List</h2>
-    <table>
+    <table style="text-align: center;">
         <tr>
             <th>Title</th>
             <th>Platform</th>
@@ -55,7 +43,7 @@
                 <form method="post" action="{{ url_for('update_quantity') }}" style="display: inline;">
                     <input type="hidden" name="game_id" value="{{ game.id }}">
                     <input type="number" name="additional_quantity" placeholder="Add Qty" min="1" style="width: 60px;" required>
-                    <button type="submit" style="margin-left: 5px;">Update</button>
+                    <button type="submit" style="margin-left: 5px;">Add</button>
                 </form>
                 <a href="{{ url_for('remove_game', game_id=game.id) }}" class="remove-link" style="margin-left: 10px;">Remove</a>
             </td>
