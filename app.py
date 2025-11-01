@@ -30,6 +30,13 @@ CREATE TABLE IF NOT EXISTS rentals (
 """)
 db.commit()
 
+# Add genre column to games table if it doesn't exist
+try:
+    cursor.execute("ALTER TABLE games ADD COLUMN genre VARCHAR(50) DEFAULT 'Action'")
+    db.commit()
+except:
+    pass  # Column might already exist
+
 # ---------- LOGIN (Root Route) ----------
 @app.route("/", methods=["GET", "POST"])
 def login():
@@ -103,9 +110,10 @@ def add_game():
         title = request.form["title"]
         platform = request.form["platform"]
         quantity = request.form["quantity"]
+        genre = request.form.get("genre", "Action")
 
         try:
-            cursor.execute("INSERT INTO games (title, platform, quantity) VALUES (%s, %s, %s)", (title, platform, quantity))
+            cursor.execute("INSERT INTO games (title, platform, quantity, genre) VALUES (%s, %s, %s, %s)", (title, platform, quantity, genre))
             db.commit()
             flash("Game added successfully.", "success")
         except Exception as e:
@@ -150,6 +158,7 @@ def customer():
 
     search = request.args.get('search', '')
     platform_filter = request.args.get('platform', '')
+    genre_filter = request.args.get('genre', '')
 
     try:
         query = "SELECT * FROM games WHERE 1=1"
@@ -163,6 +172,10 @@ def customer():
             query += " AND platform = %s"
             params.append(platform_filter)
 
+        if genre_filter:
+            query += " AND genre = %s"
+            params.append(genre_filter)
+
         cursor.execute(query, params)
         games = cursor.fetchall()
 
@@ -173,7 +186,7 @@ def customer():
         flash("Error loading games.", "error")
         games = []
         platforms = []
-    return render_template("customer.html", games=games, platforms=platforms, search=search, platform_filter=platform_filter)
+    return render_template("customer.html", games=games, platforms=platforms, search=search, platform_filter=platform_filter, genre_filter=genre_filter)
 
 # ---------- CUSTOMER: TRIAL (REPLACES RENT) ----------
 @app.route("/trial/<int:game_id>")

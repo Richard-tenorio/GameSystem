@@ -27,6 +27,19 @@
             <option value="{{ platform }}" {% if platform_filter == platform %}selected{% endif %}>{{ platform }}</option>
             {% endfor %}
         </select>
+        <select name="genre">
+            <option value="">All Genres</option>
+            <option value="Action" {% if genre_filter == 'Action' %}selected{% endif %}>Action</option>
+            <option value="Adventure" {% if genre_filter == 'Adventure' %}selected{% endif %}>Adventure</option>
+            <option value="RPG" {% if genre_filter == 'RPG' %}selected{% endif %}>RPG</option>
+            <option value="Strategy" {% if genre_filter == 'Strategy' %}selected{% endif %}>Strategy</option>
+            <option value="Sports" {% if genre_filter == 'Sports' %}selected{% endif %}>Sports</option>
+            <option value="Racing" {% if genre_filter == 'Racing' %}selected{% endif %}>Racing</option>
+            <option value="Simulation" {% if genre_filter == 'Simulation' %}selected{% endif %}>Simulation</option>
+            <option value="Puzzle" {% if genre_filter == 'Puzzle' %}selected{% endif %}>Puzzle</option>
+            <option value="Horror" {% if genre_filter == 'Horror' %}selected{% endif %}>Horror</option>
+            <option value="Fighting" {% if genre_filter == 'Fighting' %}selected{% endif %}>Fighting</option>
+        </select>
         <button type="submit">Search/Filter</button>
         <a href="{{ url_for('customer') }}">Clear Filters</a>
     </form>
