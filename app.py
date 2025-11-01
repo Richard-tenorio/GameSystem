@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import mysql.connector
 import os
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 # WARNING: In a production app, use a strong, secret key loaded from environment variables
@@ -169,23 +170,82 @@ def customer():
         platforms = []
     return render_template("customer.html", games=games, platforms=platforms, search=search, platform_filter=platform_filter, genre_filter=genre_filter)
 
-# ---------- CUSTOMER: TRIAL (REPLACES RENT) ----------
-@app.route("/trial/<int:game_id>")
-def trial(game_id):
+# ---------- CUSTOMER: RENT GAME ----------
+@app.route("/rent/<int:game_id>")
+def rent(game_id):
     if "username" in session and session["role"] == "customer":
         try:
-            cursor.execute("UPDATE games SET quantity = quantity - 1 WHERE id=%s AND quantity > 0", (game_id,))
-            if cursor.rowcount > 0:
-                db.commit()
-                flash("Trial started successfully.", "success")
-            else:
+            # Check if user already has this game rented
+            cursor.execute("SELECT id FROM rentals WHERE username=%s AND game_id=%s AND status='active'", (session["username"], game_id))
+            existing_rental = cursor.fetchone()
+
+            if existing_rental:
+                flash("You already have this game rented.", "error")
+                return redirect(url_for("customer"))
+
+            # Check if game is available
+            cursor.execute("SELECT quantity FROM games WHERE id=%s", (game_id,))
+            game = cursor.fetchone()
+
+            if not game or game["quantity"] <= 0:
                 flash("Game is out of stock.", "error")
+                return redirect(url_for("customer"))
+
+            # Calculate due date (7 days from now)
+            due_date = (datetime.now() + timedelta(days=7)).date()
+
+            # Insert rental record
+            cursor.execute("""
+                INSERT INTO rentals (username, game_id, due_date)
+                VALUES (%s, %s, %s)
+            """, (session["username"], game_id, due_date))
+
+            # Decrease game quantity
+            cursor.execute("UPDATE games SET quantity = quantity - 1 WHERE id=%s", (game_id,))
+
+            db.commit()
+            flash(f"Game rented successfully! Due date: {due_date}", "success")
         except Exception as e:
             db.rollback()
-            flash("Error starting trial.", "error")
+            flash("Error renting game.", "error")
     return redirect(url_for("customer"))
 
-# ---------- CUSTOMER: BUY (REPLACES RETURN) ----------
+# ---------- CUSTOMER: RETURN GAME ----------
+@app.route("/return/<int:rental_id>")
+def return_game(rental_id):
+    if "username" in session and session["role"] == "customer":
+        try:
+            # Get rental details
+            cursor.execute("""
+                SELECT r.game_id, r.status, g.title
+                FROM rentals r
+                JOIN games g ON r.game_id = g.id
+                WHERE r.id=%s AND r.username=%s AND r.status='active'
+            """, (rental_id, session["username"]))
+            rental = cursor.fetchone()
+
+            if not rental:
+                flash("Rental not found or already returned.", "error")
+                return redirect(url_for("profile"))
+
+            # Update rental status
+            cursor.execute("""
+                UPDATE rentals
+                SET status='returned', return_date=NOW()
+                WHERE id=%s
+            """, (rental_id,))
+
+            # Increase game quantity
+            cursor.execute("UPDATE games SET quantity = quantity + 1 WHERE id=%s", (rental["game_id"],))
+
+            db.commit()
+            flash(f"Game '{rental['title']}' returned successfully!", "success")
+        except Exception as e:
+            db.rollback()
+            flash("Error returning game.", "error")
+    return redirect(url_for("profile"))
+
+# ---------- CUSTOMER: BUY GAME ----------
 @app.route("/buy/<int:game_id>")
 def buy(game_id):
     if "username" in session and session["role"] == "customer":
@@ -217,6 +277,20 @@ def profile():
             db.rollback()
             flash("Error updating password.", "error")
 
+    # Get user's rental history
+    try:
+        cursor.execute("""
+            SELECT r.id, r.rental_date, r.due_date, r.return_date, r.status,
+                   g.title, g.platform, g.genre
+            FROM rentals r
+            JOIN games g ON r.game_id = g.id
+            WHERE r.username = %s
+            ORDER BY r.rental_date DESC
+        """, (session["username"],))
+        rentals = cursor.fetchall()
+    except Exception as e:
+        rentals = []
+
     # Get user's ratings and reviews
     try:
         cursor.execute("""
@@ -230,7 +304,7 @@ def profile():
     except Exception as e:
         ratings = []
 
-    return render_template("profile.html", ratings=ratings)
+    return render_template("profile.html", rentals=rentals, ratings=ratings)
 
 # ---------- CUSTOMER: RATE GAME ----------
 @app.route("/rate_game/<int:game_id>", methods=["GET", "POST"])
