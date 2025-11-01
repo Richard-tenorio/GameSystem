@@ -52,7 +52,12 @@
             <td>{{ game.quantity }}</td>
 
             <td>
-                <a href="{{ url_for('remove_game', game_id=game.id) }}" class="remove-link">Remove Game</a>
+                <form method="post" action="{{ url_for('update_quantity') }}" style="display: inline;">
+                    <input type="hidden" name="game_id" value="{{ game.id }}">
+                    <input type="number" name="additional_quantity" placeholder="Add Qty" min="1" style="width: 60px;" required>
+                    <button type="submit" style="margin-left: 5px;">Update</button>
+                </form>
+                <a href="{{ url_for('remove_game', game_id=game.id) }}" class="remove-link" style="margin-left: 10px;">Remove</a>
             </td>
         </tr>
         {% endfor %}
