@@ -217,10 +217,62 @@ def profile():
             db.rollback()
             flash("Error updating password.", "error")
 
-    # No rental history since rentals table is not used
-    history = []
+    # Get user's ratings and reviews
+    try:
+        cursor.execute("""
+            SELECT r.rating, r.review, r.date, g.title, g.platform
+            FROM ratings r
+            JOIN games g ON r.game_id = g.id
+            WHERE r.username = %s
+            ORDER BY r.date DESC
+        """, (session["username"],))
+        ratings = cursor.fetchall()
+    except Exception as e:
+        ratings = []
 
-    return render_template("profile.html", history=history)
+    return render_template("profile.html", ratings=ratings)
+
+# ---------- CUSTOMER: RATE GAME ----------
+@app.route("/rate_game/<int:game_id>", methods=["GET", "POST"])
+def rate_game(game_id):
+    if "username" not in session or session["role"] != "customer":
+        return redirect(url_for("login"))
+
+    try:
+        cursor.execute("SELECT * FROM games WHERE id=%s", (game_id,))
+        game = cursor.fetchone()
+        if not game:
+            flash("Game not found.", "error")
+            return redirect(url_for("customer"))
+    except Exception as e:
+        flash("Error loading game.", "error")
+        return redirect(url_for("customer"))
+
+    if request.method == "POST":
+        rating = request.form["rating"]
+        review = request.form.get("review", "").strip()
+
+        try:
+            # Check if user already rated this game
+            cursor.execute("SELECT id FROM ratings WHERE username=%s AND game_id=%s", (session["username"], game_id))
+            existing = cursor.fetchone()
+
+            if existing:
+                # Update existing rating
+                cursor.execute("UPDATE ratings SET rating=%s, review=%s WHERE id=%s", (rating, review, existing["id"]))
+            else:
+                # Insert new rating
+                cursor.execute("INSERT INTO ratings (username, game_id, rating, review) VALUES (%s, %s, %s, %s)",
+                             (session["username"], game_id, rating, review))
+
+            db.commit()
+            flash("Rating submitted successfully!", "success")
+            return redirect(url_for("profile"))
+        except Exception as e:
+            db.rollback()
+            flash("Error submitting rating.", "error")
+
+    return render_template("rate_game.html", game=game)
 
 # ---------- LOGOUT ----------
 @app.route("/logout")

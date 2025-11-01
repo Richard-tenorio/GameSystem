@@ -66,6 +66,7 @@
                 {% endif %}
 
                 <a href="{{ url_for('buy', game_id=game.id) }}" class="buy-link">Buy Now</a>
+                <a href="{{ url_for('rate_game', game_id=game.id) }}" class="rate-link">Rate & Review</a>
             </td>
         </tr>
         {% endfor %}

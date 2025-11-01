@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Rate & Review Game - Game Rentals</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Rate & Review: {{ game.title }}</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <h2>Game Details</h2>
+    <p><strong>Title:</strong> {{ game.title }}</p>
+    <p><strong>Platform:</strong> {{ game.platform }}</p>
+    <p><strong>Genre:</strong> {{ game.genre }}</p>
+
+    <h2>Your Rating & Review</h2>
+    <form method="POST">
+        <label for="rating">Rating (1-5 stars):</label><br>
+        <select name="rating" id="rating" required>
+            <option value="">Select rating</option>
+            <option value="1">1 ★</option>
+            <option value="2">2 ★★</option>
+            <option value="3">3 ★★★</option>
+            <option value="4">4 ★★★★</option>
+            <option value="5">5 ★★★★★</option>
+        </select><br><br>
+
+        <label for="review">Review (optional):</label><br>
+        <textarea name="review" id="review" rows="4" cols="50" placeholder="Share your thoughts about this game..."></textarea><br><br>
+
+        <button type="submit">Submit Rating</button>
+    </form>
+
+    <a href="{{ url_for('customer') }}">Back to Games</a> | <a href="{{ url_for('logout') }}">Logout</a>
+</body>
+</html>

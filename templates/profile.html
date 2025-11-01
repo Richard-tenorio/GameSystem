@@ -22,26 +22,36 @@
         <button type="submit">Update Password</button>
     </form>
 
-    <h2>Rental History</h2>
-    {% if history %}
+    <h2>My Reviews & Ratings</h2>
+    {% if ratings %}
     <table>
         <tr>
-            <th>Action</th>
             <th>Game Title</th>
             <th>Platform</th>
+            <th>Rating</th>
+            <th>Review</th>
             <th>Date</th>
         </tr>
-        {% for item in history %}
+        {% for rating in ratings %}
         <tr>
-            <td>{{ item.action.title() }}</td>
-            <td>{{ item.title }}</td>
-            <td>{{ item.platform }}</td>
-            <td>{{ item.date }}</td>
+            <td>{{ rating.title }}</td>
+            <td>{{ rating.platform }}</td>
+            <td>
+                {% for i in range(5) %}
+                    {% if i < rating.rating %}
+                        ★
+                    {% else %}
+                        ☆
+                    {% endif %}
+                {% endfor %}
+            </td>
+            <td>{{ rating.review or 'No review' }}</td>
+            <td>{{ rating.date.strftime('%Y-%m-%d %H:%M') }}</td>
         </tr>
         {% endfor %}
     </table>
     {% else %}
-    <p>No rental history yet.</p>
+    <p>You haven't rated any games yet.</p>
     {% endif %}
 
     <a href="{{ url_for('customer') }}">Back to Games</a> | <a href="{{ url_for('logout') }}">Logout</a>

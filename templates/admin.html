@@ -20,6 +20,19 @@
     <form method="post" action="{{ url_for('add_game') }}">
         <input type="text" name="title" placeholder="Game Title" required>
         <input type="text" name="platform" placeholder="Platform (e.g., PS5, Xbox)" required>
+        <select name="genre" required>
+            <option value="">Select Genre</option>
+            <option value="Action">Action</option>
+            <option value="Adventure">Adventure</option>
+            <option value="RPG">RPG</option>
+            <option value="Strategy">Strategy</option>
+            <option value="Sports">Sports</option>
+            <option value="Racing">Racing</option>
+            <option value="Simulation">Simulation</option>
+            <option value="Puzzle">Puzzle</option>
+            <option value="Horror">Horror</option>
+            <option value="Fighting">Fighting</option>
+        </select>
         <input type="number" name="quantity" placeholder="Quantity" required>
         <button type="submit">Add Game</button>
     </form>
