@@ -16,26 +16,7 @@ db = mysql.connector.connect(
 )
 cursor = db.cursor(dictionary=True)
 
-# Create rentals table if it doesn't exist
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS rentals (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    game_id INT,
-    action VARCHAR(10),
-    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (game_id) REFERENCES games(id)
-)
-""")
-db.commit()
 
-# Add genre column to games table if it doesn't exist
-try:
-    cursor.execute("ALTER TABLE games ADD COLUMN genre VARCHAR(50) DEFAULT 'Action'")
-    db.commit()
-except:
-    pass  # Column might already exist
 
 # ---------- LOGIN (Root Route) ----------
 @app.route("/", methods=["GET", "POST"])
@@ -193,14 +174,8 @@ def customer():
 def trial(game_id):
     if "username" in session and session["role"] == "customer":
         try:
-            # Get user id
-            cursor.execute("SELECT id FROM users WHERE username=%s", (session["username"],))
-            user = cursor.fetchone()
-            user_id = user["id"]
-
             cursor.execute("UPDATE games SET quantity = quantity - 1 WHERE id=%s AND quantity > 0", (game_id,))
             if cursor.rowcount > 0:
-                cursor.execute("INSERT INTO rentals (user_id, game_id, action) VALUES (%s, %s, 'trial')", (user_id, game_id))
                 db.commit()
                 flash("Trial started successfully.", "success")
             else:
@@ -215,14 +190,8 @@ def trial(game_id):
 def buy(game_id):
     if "username" in session and session["role"] == "customer":
         try:
-            # Get user id
-            cursor.execute("SELECT id FROM users WHERE username=%s", (session["username"],))
-            user = cursor.fetchone()
-            user_id = user["id"]
-
             cursor.execute("UPDATE games SET quantity = quantity - 1 WHERE id=%s AND quantity > 0", (game_id,))
             if cursor.rowcount > 0:
-                cursor.execute("INSERT INTO rentals (user_id, game_id, action) VALUES (%s, %s, 'buy')", (user_id, game_id))
                 db.commit()
                 flash("Game purchased successfully.", "success")
             else:
@@ -248,18 +217,8 @@ def profile():
             db.rollback()
             flash("Error updating password.", "error")
 
-    try:
-        cursor.execute("""
-            SELECT r.action, g.title, g.platform, r.date
-            FROM rentals r
-            JOIN games g ON r.game_id = g.id
-            WHERE r.user_id = (SELECT id FROM users WHERE username=%s)
-            ORDER BY r.date DESC
-        """, (session["username"],))
-        history = cursor.fetchall()
-    except Exception as e:
-        flash("Error loading rental history.", "error")
-        history = []
+    # No rental history since rentals table is not used
+    history = []
 
     return render_template("profile.html", history=history)
 
