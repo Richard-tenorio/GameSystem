@@ -144,7 +144,7 @@ def trial(game_id):
 def buy(game_id):
     if "username" in session and session["role"] == "customer":
         try:
-            cursor.execute("DELETE FROM games WHERE id=%s", (game_id,))
+            cursor.execute("UPDATE games SET quantity = quantity - 1 WHERE id=%s AND quantity > 0", (game_id,))
             db.commit()
             flash("Game purchased successfully.", "success")
         except Exception as e:
