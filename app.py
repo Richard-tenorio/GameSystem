@@ -106,19 +106,21 @@ def customer():
     games = cursor.fetchall()
     return render_template("customer.html", games=games)
 
-# ---------- CUSTOMER: RENT ----------
-@app.route("/rent/<int:game_id>")
-def rent(game_id):
+# ---------- CUSTOMER: TRIAL (REPLACES RENT) ----------
+@app.route("/trial/<int:game_id>")
+def trial(game_id):
     if "username" in session and session["role"] == "customer":
+        # Decrements quantity: Game is temporarily held for trial
         cursor.execute("UPDATE games SET quantity = quantity - 1 WHERE id=%s AND quantity > 0", (game_id,))
         db.commit()
     return redirect(url_for("customer"))
 
-# ---------- CUSTOMER: RETURN GAME ----------
-@app.route("/return_game/<int:game_id>")
-def return_game(game_id):
+# ---------- CUSTOMER: BUY (REPLACES RETURN) ----------
+@app.route("/buy/<int:game_id>")
+def buy(game_id):
     if "username" in session and session["role"] == "customer":
-        cursor.execute("UPDATE games SET quantity = quantity + 1 WHERE id=%s", (game_id,))
+        # Deletes game from inventory: Represents a permanent purchase and removal from stock
+        cursor.execute("DELETE FROM games WHERE id=%s", (game_id,))
         db.commit()
     return redirect(url_for("customer"))
 

@@ -24,12 +24,12 @@
             
             <td>
                 {% if game.quantity > 0 %}
-                    <a href="/rent/{{ game.id }}" class="rent-link">Rent</a>
+                    <a href="/trial/{{ game.id }}" class="trial-link">Start Trial</a>
                 {% else %}
                     Out of stock
                 {% endif %}
                 
-                <a href="/return_game/{{ game.id }}" class="return-link">Return Game</a>
+                <a href="/buy/{{ game.id }}" class="buy-link">Buy Now</a>
             </td>
         </tr>
         {% endfor %}
