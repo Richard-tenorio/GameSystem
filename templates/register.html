@@ -2,24 +2,27 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Customer Registration</title>
+    <title>Register - Game Rentals</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="box login-box">
-        <h1>Register New Customer Account</h1>
-        
-        {% if error %}
-            <div class="error">{{ error }}</div>
-        {% endif %}
-        
+    <div class="box">
+        <h1>Create Account</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         <form method="POST">
             <input type="text" name="username" placeholder="Choose Username" required><br>
             <input type="password" name="password" placeholder="Choose Password" required><br>
-            
             <button type="submit">Create Account</button>
         </form>
-        
+
         <p><a href="{{ url_for('login') }}">← Back to Login</a></p>
     </div>
 </body>

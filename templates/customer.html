@@ -1,11 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8" />
     <title>Customer - Game Rentals</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <h1>Welcome Customer, {{ session['username'] }}</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 
     <h2>Available Games</h2>
     <table>
@@ -15,29 +24,26 @@
             <th>Quantity</th>
             <th>Action</th>
         </tr>
-        
+
         {% for game in games %}
         <tr>
             <td>{{ game.title }}</td>
             <td>{{ game.platform }}</td>
             <td>{{ game.quantity }}</td>
-            
+
             <td>
                 {% if game.quantity > 0 %}
-                    <a href="/trial/{{ game.id }}" class="trial-link">Start Trial</a>
+                    <a href="{{ url_for('trial', game_id=game.id) }}" class="trial-link">Start Trial</a>
                 {% else %}
                     Out of stock
                 {% endif %}
-                
-                <a href="/buy/{{ game.id }}" class="buy-link">Buy Now</a>
+
+                <a href="{{ url_for('buy', game_id=game.id) }}" class="buy-link">Buy Now</a>
             </td>
         </tr>
         {% endfor %}
     </table>
 
-    <br>
-    <a href="/logout">Logout</a>
-
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <a href="{{ url_for('logout') }}">Logout</a>
 </body>
 </html>
