@@ -148,13 +148,32 @@ def customer():
     if "username" not in session or session["role"] != "customer":
         return redirect(url_for("login"))
 
+    search = request.args.get('search', '')
+    platform_filter = request.args.get('platform', '')
+
     try:
-        cursor.execute("SELECT * FROM games")
+        query = "SELECT * FROM games WHERE 1=1"
+        params = []
+
+        if search:
+            query += " AND title LIKE %s"
+            params.append(f"%{search}%")
+
+        if platform_filter:
+            query += " AND platform = %s"
+            params.append(platform_filter)
+
+        cursor.execute(query, params)
         games = cursor.fetchall()
+
+        # Get unique platforms for filter dropdown
+        cursor.execute("SELECT DISTINCT platform FROM games")
+        platforms = [row['platform'] for row in cursor.fetchall()]
     except Exception as e:
         flash("Error loading games.", "error")
         games = []
-    return render_template("customer.html", games=games)
+        platforms = []
+    return render_template("customer.html", games=games, platforms=platforms, search=search, platform_filter=platform_filter)
 
 # ---------- CUSTOMER: TRIAL (REPLACES RENT) ----------
 @app.route("/trial/<int:game_id>")
