@@ -20,6 +20,10 @@
         <form method="POST" onsubmit="return validatePassword()">
             <input type="text" name="username" placeholder="Choose Username" required><br>
             <input type="password" id="password" name="password" placeholder="Choose Password" required><br>
+            <select name="role" required>
+                <option value="customer">Customer</option>
+                <option value="admin">Admin</option>
+            </select><br>
             <div id="password-error" style="color: red; display: none;"></div>
             <button type="submit">Create Account</button>
         </form>

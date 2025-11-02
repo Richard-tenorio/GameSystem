@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import mysql.connector
 import os
 from datetime import datetime, timedelta
+from werkzeug.security import generate_password_hash, check_password_hash
 import re
 
 app = Flask(__name__)
@@ -42,10 +43,9 @@ def login():
         password = request.form["password"]
 
         try:
-            cursor.execute("SELECT * FROM users WHERE username=%s AND password=%s", (username, password))
+            cursor.execute("SELECT * FROM users WHERE username=%s", (username,))
             user = cursor.fetchone()
-
-            if user:
+            if user and check_password_hash(user["password"], password):
                 if user["role"] == "inactive":
                     flash("Your account has been deactivated. Please contact support.", "error")
                 else:
@@ -69,7 +69,7 @@ def register():
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
-        role = "customer"
+        role = request.form["role"]
 
         # Validate password
         is_valid, message = validate_password(password)
@@ -82,9 +82,10 @@ def register():
             if cursor.fetchone():
                 flash("Username already exists. Please choose another.", "error")
             else:
+                hashed_password = generate_password_hash(password)
                 cursor.execute(
                     "INSERT INTO users (username, password, role) VALUES (%s, %s, %s)",
-                    (username, password, role)
+                    (username, hashed_password, role)
                 )
                 db.commit()
                 flash("Account created successfully. Please log in.", "success")
