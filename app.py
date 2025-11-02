@@ -104,14 +104,25 @@ def admin():
     if "username" not in session or session["role"] != "admin":
         return redirect(url_for("login"))
 
+    page = int(request.args.get('page', 1))
+    per_page = 10
+    offset = (page - 1) * per_page
+
     try:
-        # Get games with rental counts
+        # Get total games count for pagination
+        cursor.execute("SELECT COUNT(*) as total FROM games")
+        total_games_count = cursor.fetchone()["total"]
+        total_pages = (total_games_count + per_page - 1) // per_page
+
+        # Get games with rental counts with pagination
         cursor.execute("""
             SELECT g.*, COUNT(r.id) as rented_count
             FROM games g
             LEFT JOIN rentals r ON g.id = r.game_id AND r.status = 'active'
             GROUP BY g.id
-        """)
+            ORDER BY g.id
+            LIMIT %s OFFSET %s
+        """, (per_page, offset))
         games = cursor.fetchall()
 
         # Get statistics
@@ -130,9 +141,10 @@ def admin():
     except Exception as e:
         flash("Error loading dashboard.", "error")
         games = []
-        total_games = rented_games = total_users = active_users = 0
+        total_games = rented_games = total_users = active_users = total_pages = 0
+        page = 1
 
-    return render_template("admin.html", games=games, total_games=total_games, rented_games=rented_games, total_users=total_users, active_users=active_users)
+    return render_template("admin.html", games=games, total_games=total_games, rented_games=rented_games, total_users=total_users, active_users=active_users, page=page, total_pages=total_pages)
 
 # ---------- ADMIN: ADD GAME ----------
 @app.route("/add_game", methods=["POST"])
@@ -241,25 +253,43 @@ def customer():
     if "username" not in session or session["role"] != "customer":
         return redirect(url_for("login"))
 
+    page = int(request.args.get('page', 1))
+    per_page = 12
+    offset = (page - 1) * per_page
+
     search = request.args.get('search', '')
     platform_filter = request.args.get('platform', '')
     genre_filter = request.args.get('genre', '')
 
     try:
+        # Build the base query with filters
         query = "SELECT * FROM games WHERE 1=1"
+        count_query = "SELECT COUNT(*) as total FROM games WHERE 1=1"
         params = []
 
         if search:
             query += " AND title LIKE %s"
+            count_query += " AND title LIKE %s"
             params.append(f"%{search}%")
 
         if platform_filter:
             query += " AND platform = %s"
+            count_query += " AND platform = %s"
             params.append(platform_filter)
 
         if genre_filter:
             query += " AND genre = %s"
+            count_query += " AND genre = %s"
             params.append(genre_filter)
+
+        # Get total count for pagination
+        cursor.execute(count_query, params)
+        total_games_count = cursor.fetchone()["total"]
+        total_pages = (total_games_count + per_page - 1) // per_page
+
+        # Add pagination to the query
+        query += " ORDER BY id LIMIT %s OFFSET %s"
+        params.extend([per_page, offset])
 
         cursor.execute(query, params)
         games = cursor.fetchall()
@@ -271,7 +301,9 @@ def customer():
         flash("Error loading games.", "error")
         games = []
         platforms = []
-    return render_template("customer.html", games=games, platforms=platforms, search=search, platform_filter=platform_filter, genre_filter=genre_filter)
+        total_pages = 0
+        page = 1
+    return render_template("customer.html", games=games, platforms=platforms, search=search, platform_filter=platform_filter, genre_filter=genre_filter, page=page, total_pages=total_pages)
 
 # ---------- CUSTOMER: RENT GAME ----------
 @app.route("/rent/<int:game_id>")
