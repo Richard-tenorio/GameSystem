@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import mysql.connector
 import os
 from datetime import datetime, timedelta
+import re
 
 app = Flask(__name__)
 # WARNING: In a production app, use a strong, secret key loaded from environment variables
@@ -17,7 +18,21 @@ db = mysql.connector.connect(
 )
 cursor = db.cursor(dictionary=True)
 
-
+def validate_password(password):
+    """
+    Validate password: at least 8 characters, one uppercase, one lowercase, one digit, one special character.
+    """
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long."
+    if not re.search(r'[A-Z]', password):
+        return False, "Password must contain at least one uppercase letter."
+    if not re.search(r'[a-z]', password):
+        return False, "Password must contain at least one lowercase letter."
+    if not re.search(r'\d', password):
+        return False, "Password must contain at least one digit."
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        return False, "Password must contain at least one special character (e.g., @, #, !)."
+    return True, ""
 
 # ---------- LOGIN (Root Route) ----------
 @app.route("/", methods=["GET", "POST"])
@@ -52,6 +67,12 @@ def register():
         username = request.form["username"]
         password = request.form["password"]
         role = "customer"
+
+        # Validate password
+        is_valid, message = validate_password(password)
+        if not is_valid:
+            flash(message, "error")
+            return render_template("register.html")
 
         try:
             cursor.execute("SELECT * FROM users WHERE username=%s", (username,))
@@ -269,6 +290,35 @@ def profile():
 
     if request.method == "POST":
         new_password = request.form["password"]
+        # Validate password
+        is_valid, message = validate_password(new_password)
+        if not is_valid:
+            flash(message, "error")
+            # Get user's rental history and ratings to render template with error
+            try:
+                cursor.execute("""
+                    SELECT r.id, r.rental_date, r.due_date, r.return_date, r.status,
+                           g.title, g.platform, g.genre
+                    FROM rentals r
+                    JOIN games g ON r.game_id = g.id
+                    WHERE r.username = %s
+                    ORDER BY r.rental_date DESC
+                """, (session["username"],))
+                rentals = cursor.fetchall()
+            except Exception as e:
+                rentals = []
+            try:
+                cursor.execute("""
+                    SELECT r.rating, r.review, r.date, g.title, g.platform
+                    FROM ratings r
+                    JOIN games g ON r.game_id = g.id
+                    WHERE r.username = %s
+                    ORDER BY r.date DESC
+                """, (session["username"],))
+                ratings = cursor.fetchall()
+            except Exception as e:
+                ratings = []
+            return render_template("profile.html", rentals=rentals, ratings=ratings)
         try:
             cursor.execute("UPDATE users SET password=%s WHERE username=%s", (new_password, session["username"]))
             db.commit()

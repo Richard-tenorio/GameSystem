@@ -17,8 +17,9 @@
     {% endwith %}
 
     <h2>Change Password</h2>
-    <form method="POST">
-        <input type="password" name="password" placeholder="New Password" required><br>
+    <form method="POST" onsubmit="return validatePassword()">
+        <input type="password" id="password" name="password" placeholder="New Password" required><br>
+        <div id="password-error" style="color: red; display: none;"></div>
         <button type="submit">Update Password</button>
     </form>
 
@@ -93,5 +94,37 @@
     {% endif %}
 
     <a href="{{ url_for('customer') }}">Back to Games</a> | <a href="{{ url_for('logout') }}">Logout</a>
+    <script>
+        function validatePassword() {
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('password-error');
+            const errors = [];
+
+            if (password.length < 8) {
+                errors.push('Password must be at least 8 characters long.');
+            }
+            if (!/[A-Z]/.test(password)) {
+                errors.push('Password must contain at least one uppercase letter.');
+            }
+            if (!/[a-z]/.test(password)) {
+                errors.push('Password must contain at least one lowercase letter.');
+            }
+            if (!/\d/.test(password)) {
+                errors.push('Password must contain at least one digit.');
+            }
+            if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+                errors.push('Password must contain at least one special character (e.g., @, #, !).');
+            }
+
+            if (errors.length > 0) {
+                errorDiv.innerHTML = errors.join('<br>');
+                errorDiv.style.display = 'block';
+                return false;
+            } else {
+                errorDiv.style.display = 'none';
+                return true;
+            }
+        }
+    </script>
 </body>
 </html>
