@@ -62,7 +62,8 @@
         <tr>
             <th>Title</th>
             <th>Platform</th>
-            <th>Quantity</th>
+            <th>Available</th>
+            <th>Rented</th>
             <th>Action</th>
         </tr>
 
@@ -71,6 +72,7 @@
             <td>{{ game.title }}</td>
             <td>{{ game.platform }}</td>
             <td>{{ game.quantity }}</td>
+            <td>{{ game.rented_count }}</td>
 
             <td>
                 <form method="post" action="{{ url_for('update_quantity') }}" style="display: inline;">

@@ -102,7 +102,13 @@ def admin():
         return redirect(url_for("login"))
 
     try:
-        cursor.execute("SELECT * FROM games")
+        # Get games with rental counts
+        cursor.execute("""
+            SELECT g.*, COUNT(r.id) as rented_count
+            FROM games g
+            LEFT JOIN rentals r ON g.id = r.game_id AND r.status = 'active'
+            GROUP BY g.id
+        """)
         games = cursor.fetchall()
 
         # Get statistics
