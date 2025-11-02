@@ -1,0 +1,3 @@
+- [ ] Add role selection dropdown to templates/register.html
+- [ ] Update /register route in app.py to get role from form
+- [ ] Test registering as admin and customer
