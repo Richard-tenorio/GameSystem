@@ -8,6 +8,7 @@ import re
 app = Flask(__name__)
 # WARNING: In a production app, use a strong, secret key loaded from environment variables
 app.secret_key = os.urandom(24)
+app.permanent_session_lifetime = timedelta(minutes=30)
 
 # ---------- DATABASE CONNECTION ----------
 # Ensure your MySQL server is running and the database 'gaming_rental_db' exists.
@@ -49,6 +50,7 @@ def login():
                 if user["role"] == "inactive":
                     flash("Your account has been deactivated. Please contact support.", "error")
                 else:
+                    session.permanent = True
                     session["username"] = user["username"]
                     session["role"] = user["role"]
 
@@ -400,7 +402,8 @@ def profile():
                 ratings = []
             return render_template("profile.html", rentals=rentals, ratings=ratings)
         try:
-            cursor.execute("UPDATE users SET password=%s WHERE username=%s", (new_password, session["username"]))
+            hashed_password = generate_password_hash(new_password)
+            cursor.execute("UPDATE users SET password=%s WHERE username=%s", (hashed_password, session["username"]))
             db.commit()
             flash("Password updated successfully.", "success")
         except Exception as e:
