@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>User Management - Game Rentals</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>User Management</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <h2>Customer Accounts</h2>
+    {% if users %}
+    <table>
+        <tr>
+            <th>Username</th>
+            <th>Status</th>
+            <th>Total Rentals</th>
+            <th>Active Rentals</th>
+            <th>Returned Rentals</th>
+            <th>Overdue Rentals</th>
+            <th>Actions</th>
+        </tr>
+        {% for user in users %}
+        <tr>
+            <td>{{ user.username }}</td>
+            <td>
+                <span class="status-{{ user.role }}">
+                    {{ user.role.title() }}
+                </span>
+            </td>
+            <td>{{ user.total_rentals }}</td>
+            <td>{{ user.active_rentals }}</td>
+            <td>{{ user.returned_rentals }}</td>
+            <td>{{ user.overdue_rentals }}</td>
+            <td>
+                {% if user.role == 'customer' %}
+                    <a href="{{ url_for('deactivate_user', username=user.username) }}" class="btn btn-warning">Deactivate</a>
+                {% elif user.role == 'inactive' %}
+                    <a href="{{ url_for('reactivate_user', username=user.username) }}" class="btn btn-success">Reactivate</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No customer accounts found.</p>
+    {% endif %}
+
+    <a href="{{ url_for('admin') }}">Back to Admin Dashboard</a> | <a href="{{ url_for('logout') }}">Logout</a>
+</body>
+</html>

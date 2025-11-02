@@ -46,13 +46,16 @@ def login():
             user = cursor.fetchone()
 
             if user:
-                session["username"] = user["username"]
-                session["role"] = user["role"]
-
-                if user["role"] == "admin":
-                    return redirect(url_for("admin"))
+                if user["role"] == "inactive":
+                    flash("Your account has been deactivated. Please contact support.", "error")
                 else:
-                    return redirect(url_for("customer"))
+                    session["username"] = user["username"]
+                    session["role"] = user["role"]
+
+                    if user["role"] == "admin":
+                        return redirect(url_for("admin"))
+                    else:
+                        return redirect(url_for("customer"))
             else:
                 flash("Invalid username or password", "error")
         except Exception as e:
@@ -101,10 +104,26 @@ def admin():
     try:
         cursor.execute("SELECT * FROM games")
         games = cursor.fetchall()
+
+        # Get statistics
+        cursor.execute("SELECT COUNT(*) as total_games FROM games")
+        total_games = cursor.fetchone()["total_games"]
+
+        cursor.execute("SELECT COUNT(*) as rented_games FROM rentals WHERE status='active'")
+        rented_games = cursor.fetchone()["rented_games"]
+
+        cursor.execute("SELECT COUNT(*) as total_users FROM users WHERE role='customer'")
+        total_users = cursor.fetchone()["total_users"]
+
+        cursor.execute("SELECT COUNT(*) as active_users FROM users WHERE role='customer' AND username IN (SELECT DISTINCT username FROM rentals)")
+        active_users = cursor.fetchone()["active_users"]
+
     except Exception as e:
-        flash("Error loading games.", "error")
+        flash("Error loading dashboard.", "error")
         games = []
-    return render_template("admin.html", games=games)
+        total_games = rented_games = total_users = active_users = 0
+
+    return render_template("admin.html", games=games, total_games=total_games, rented_games=rented_games, total_users=total_users, active_users=active_users)
 
 # ---------- ADMIN: ADD GAME ----------
 @app.route("/add_game", methods=["POST"])
@@ -152,6 +171,60 @@ def remove_game(game_id):
             db.rollback()
             flash("Error removing game.", "error")
     return redirect(url_for("admin"))
+
+# ---------- ADMIN: USER MANAGEMENT ----------
+@app.route("/user_management")
+def user_management():
+    if "username" not in session or session["role"] != "admin":
+        return redirect(url_for("login"))
+
+    try:
+        cursor.execute("SELECT username, role FROM users WHERE role IN ('customer', 'inactive') ORDER BY username")
+        users = cursor.fetchall()
+
+        # Get activity data for each user
+        for user in users:
+            cursor.execute("""
+                SELECT COUNT(*) as total_rentals,
+                       COUNT(CASE WHEN status='active' THEN 1 END) as active_rentals,
+                       COUNT(CASE WHEN status='returned' THEN 1 END) as returned_rentals,
+                       COUNT(CASE WHEN status='overdue' THEN 1 END) as overdue_rentals
+                FROM rentals WHERE username=%s
+            """, (user["username"],))
+            activity = cursor.fetchone()
+            user.update(activity)
+
+    except Exception as e:
+        flash("Error loading user management.", "error")
+        users = []
+
+    return render_template("user_management.html", users=users)
+
+# ---------- ADMIN: DEACTIVATE USER ----------
+@app.route("/deactivate_user/<username>")
+def deactivate_user(username):
+    if "username" in session and session["role"] == "admin":
+        try:
+            cursor.execute("UPDATE users SET role='inactive' WHERE username=%s", (username,))
+            db.commit()
+            flash(f"User '{username}' has been deactivated.", "success")
+        except Exception as e:
+            db.rollback()
+            flash("Error deactivating user.", "error")
+    return redirect(url_for("user_management"))
+
+# ---------- ADMIN: REACTIVATE USER ----------
+@app.route("/reactivate_user/<username>")
+def reactivate_user(username):
+    if "username" in session and session["role"] == "admin":
+        try:
+            cursor.execute("UPDATE users SET role='customer' WHERE username=%s", (username,))
+            db.commit()
+            flash(f"User '{username}' has been reactivated.", "success")
+        except Exception as e:
+            db.rollback()
+            flash("Error reactivating user.", "error")
+    return redirect(url_for("user_management"))
 
 # ---------- CUSTOMER DASHBOARD ----------
 @app.route("/customer")

@@ -16,6 +16,26 @@
         {% endif %}
     {% endwith %}
 
+    <h2>Dashboard Statistics</h2>
+    <div class="stats">
+        <div class="stat-item">
+            <h3>Total Games</h3>
+            <p>{{ total_games }}</p>
+        </div>
+        <div class="stat-item">
+            <h3>Currently Rented</h3>
+            <p>{{ rented_games }}</p>
+        </div>
+        <div class="stat-item">
+            <h3>Total Users</h3>
+            <p>{{ total_users }}</p>
+        </div>
+        <div class="stat-item">
+            <h3>Active Users</h3>
+            <p>{{ active_users }}</p>
+        </div>
+    </div>
+
     <h2>Add New Game</h2>
     <form method="post" action="{{ url_for('add_game') }}">
         <input type="text" name="title" placeholder="Game Title" required>
@@ -64,6 +84,6 @@
         {% endfor %}
     </table>
 
-    <a href="{{ url_for('logout') }}">Logout</a>
+    <a href="{{ url_for('user_management') }}">User Management</a> | <a href="{{ url_for('logout') }}">Logout</a>
 </body>
 </html>
