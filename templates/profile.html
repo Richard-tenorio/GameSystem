@@ -42,11 +42,15 @@
             <td>{{ rental.platform }}</td>
             <td>{{ rental.genre }}</td>
             <td>{{ rental.rental_date.strftime('%Y-%m-%d') }}</td>
-            <td>{{ rental.due_date.strftime('%Y-%m-%d') }}</td>
+            <td>{{ rental.due_date.strftime('%Y-%m-%d') if rental.due_date else 'N/A' }}</td>
             <td>{{ rental.return_date.strftime('%Y-%m-%d %H:%M') if rental.return_date else 'Not returned' }}</td>
             <td>
                 <span class="status-{{ rental.status }}">
-                    {{ rental.status.title() }}
+                    {% if rental.status == 'purchased' %}
+                        Purchased
+                    {% else %}
+                        {{ rental.status.title() }}
+                    {% endif %}
                 </span>
             </td>
             <td>
@@ -58,7 +62,7 @@
         {% endfor %}
     </table>
     {% else %}
-    <p>You haven't rented any games yet.</p>
+    <p>You haven't rented or purchased any games yet.</p>
     {% endif %}
 
     <h2>My Reviews & Ratings</h2>

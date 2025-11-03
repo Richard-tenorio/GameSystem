@@ -385,12 +385,25 @@ def return_game(rental_id):
 def buy(game_id):
     if "username" in session and session["role"] == "customer":
         try:
-            cursor.execute("UPDATE games SET quantity = quantity - 1 WHERE id=%s AND quantity > 0", (game_id,))
-            if cursor.rowcount > 0:
-                db.commit()
-                flash("Game purchased successfully.", "success")
-            else:
+            # Check if game is available
+            cursor.execute("SELECT quantity FROM games WHERE id=%s", (game_id,))
+            game = cursor.fetchone()
+
+            if not game or game["quantity"] <= 0:
                 flash("Game is out of stock.", "error")
+                return redirect(url_for("customer"))
+
+            # Insert purchase record as a rental with status 'purchased'
+            cursor.execute("""
+                INSERT INTO rentals (username, game_id, rental_date, status)
+                VALUES (%s, %s, NOW(), 'purchased')
+            """, (session["username"], game_id))
+
+            # Decrease game quantity
+            cursor.execute("UPDATE games SET quantity = quantity - 1 WHERE id=%s", (game_id,))
+
+            db.commit()
+            flash("Game purchased successfully.", "success")
         except Exception as e:
             db.rollback()
             flash("Error purchasing game.", "error")
