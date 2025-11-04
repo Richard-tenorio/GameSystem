@@ -17,9 +17,10 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST" onsubmit="return validatePassword()">
+        <form method="POST" onsubmit="return validateForm()">
             <input type="text" name="username" placeholder="Choose Username" required><br>
             <input type="password" id="password" name="password" placeholder="Choose Password" required><br>
+            <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm Password" required><br>
             <select name="role" required>
                 <option value="customer">Customer</option>
                 <option value="admin">Admin</option>
@@ -31,11 +32,18 @@
         <p><a href="{{ url_for('login') }}">← Back to Login</a></p>
     </div>
     <script>
-        function validatePassword() {
+        function validateForm() {
             const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
             const errorDiv = document.getElementById('password-error');
             const errors = [];
 
+            // Check password match
+            if (password !== confirmPassword) {
+                errors.push('Passwords do not match.');
+            }
+
+            // Validate password strength
             if (password.length < 8) {
                 errors.push('Password must be at least 8 characters long.');
             }

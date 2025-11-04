@@ -42,9 +42,9 @@
             <td>{{ user.overdue_rentals }}</td>
             <td>
                 {% if user.role == 'customer' %}
-                    <a href="{{ url_for('deactivate_user', username=user.username) }}" class="btn btn-warning">Deactivate</a>
+                    <a href="{{ url_for('deactivate_user', username=user.username) }}" class="btn btn-warning" onclick="return confirm('Are you sure you want to deactivate this user?')">Deactivate</a>
                 {% elif user.role == 'inactive' %}
-                    <a href="{{ url_for('reactivate_user', username=user.username) }}" class="btn btn-success">Reactivate</a>
+                    <a href="{{ url_for('reactivate_user', username=user.username) }}" class="btn btn-success" onclick="return confirm('Are you sure you want to reactivate this user?')">Reactivate</a>
                 {% endif %}
             </td>
         </tr>

@@ -67,7 +67,13 @@ def register():
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
+        confirm_password = request.form["confirm_password"]
         role = request.form["role"]
+
+        # Check if passwords match
+        if password != confirm_password:
+            flash("Passwords do not match.", "error")
+            return render_template("register.html")
 
         # Validate password
         is_valid, message = validate_password(password)
@@ -128,13 +134,35 @@ def admin():
 @app.route("/add_game", methods=["POST"])
 def add_game():
     if "username" in session and session["role"] == "admin":
-        title = request.form["title"]
-        platform = request.form["platform"]
-        quantity = request.form["quantity"]
-        genre = request.form.get("genre", "Action")
+        title = request.form["title"].strip()
+        platform = request.form["platform"].strip()
+        quantity = request.form["quantity"].strip()
+        genre = request.form.get("genre", "Action").strip()
+
+        # Validate inputs
+        if not title:
+            flash("Game title cannot be empty.", "error")
+            return redirect(url_for("admin"))
+        if not platform:
+            flash("Platform cannot be empty.", "error")
+            return redirect(url_for("admin"))
+        try:
+            quantity_int = int(quantity)
+            if quantity_int <= 0:
+                flash("Quantity must be a positive integer.", "error")
+                return redirect(url_for("admin"))
+        except ValueError:
+            flash("Quantity must be a valid integer.", "error")
+            return redirect(url_for("admin"))
+
+        # Check if game title already exists
+        existing_game = Game.query.filter_by(title=title).first()
+        if existing_game:
+            flash("A game with this title already exists.", "error")
+            return redirect(url_for("admin"))
 
         try:
-            game = Game(title=title, platform=platform, quantity=int(quantity), genre=genre)
+            game = Game(title=title, platform=platform, quantity=quantity_int, genre=genre)
             db.session.add(game)
             db.session.commit()
             flash("Game added successfully.", "success")
