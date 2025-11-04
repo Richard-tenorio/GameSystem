@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketplace - GameHub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GameHub - Marketplace</h1>
+            <nav>
+                <a href="{{ url_for('customer') }}">Browse New Games</a>
+                <a href="{{ url_for('marketplace') }}">Marketplace</a>
+                <a href="{{ url_for('profile') }}">Profile</a>
+                <a href="{{ url_for('logout') }}">Logout</a>
+            </nav>
+        </header>
+
+        <main>
+            <h2>Used Games for Sale</h2>
+
+            <!-- Search and Filters -->
+            <form method="GET" class="filters">
+                <input type="text" name="search" placeholder="Search games..." value="{{ search }}">
+                <select name="platform">
+                    <option value="">All Platforms</option>
+                    {% for platform in platforms %}
+                        <option value="{{ platform }}" {% if platform_filter == platform %}selected{% endif %}>{{ platform }}</option>
+                    {% endfor %}
+                </select>
+                <select name="genre">
+                    <option value="">All Genres</option>
+                    <option value="Action" {% if genre_filter == 'Action' %}selected{% endif %}>Action</option>
+                    <option value="Adventure" {% if genre_filter == 'Adventure' %}selected{% endif %}>Adventure</option>
+                    <option value="RPG" {% if genre_filter == 'RPG' %}selected{% endif %}>RPG</option>
+                    <option value="Strategy" {% if genre_filter == 'Strategy' %}selected{% endif %}>Strategy</option>
+                    <option value="Sports" {% if genre_filter == 'Sports' %}selected{% endif %}>Sports</option>
+                    <option value="Racing" {% if genre_filter == 'Racing' %}selected{% endif %}>Racing</option>
+                    <option value="Puzzle" {% if genre_filter == 'Puzzle' %}selected{% endif %}>Puzzle</option>
+                    <option value="Simulation" {% if genre_filter == 'Simulation' %}selected{% endif %}>Simulation</option>
+                </select>
+                <button type="submit">Filter</button>
+            </form>
+
+            <!-- Games Grid -->
+            <div class="games-grid">
+                {% for user_game in user_games %}
+                    <div class="game-card">
+                        <h3>{{ user_game.game.title }}</h3>
+                        <p><strong>Platform:</strong> {{ user_game.game.platform }}</p>
+                        <p><strong>Genre:</strong> {{ user_game.game.genre }}</p>
+                        <p><strong>Condition:</strong> {{ user_game.condition }}</p>
+                        <p><strong>Price:</strong> ${{ "%.2f"|format(user_game.sale_price) }}</p>
+                        <p><strong>Seller:</strong> {{ user_game.username }}</p>
+                        <a href="{{ url_for('buy_used', user_game_id=user_game.id) }}" class="btn" onclick="return confirm('Are you sure you want to buy this used game?')">Buy Used</a>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+                <div class="pagination">
+                    {% if page > 1 %}
+                        <a href="{{ url_for('marketplace', page=page-1, search=search, platform=platform_filter, genre=genre_filter) }}">&laquo; Previous</a>
+                    {% endif %}
+
+                    {% for page_num in range(1, total_pages + 1) %}
+                        {% if page_num == page %}
+                            <span class="current-page">{{ page_num }}</span>
+                        {% else %}
+                            <a href="{{ url_for('marketplace', page=page_num, search=search, platform=platform_filter, genre=genre_filter) }}">{{ page_num }}</a>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page < total_pages %}
+                        <a href="{{ url_for('marketplace', page=page+1, search=search, platform=platform_filter, genre=genre_filter) }}">Next &raquo;</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            {% if not user_games %}
+                <p>No used games available for sale.</p>
+            {% endif %}
+        </main>
+
+        <footer>
+            <p>&copy; 2023 GameHub. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

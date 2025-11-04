@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sell Game - GameHub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GameHub - Sell Game</h1>
+            <nav>
+                <a href="{{ url_for('customer') }}">Browse New Games</a>
+                <a href="{{ url_for('marketplace') }}">Marketplace</a>
+                <a href="{{ url_for('profile') }}">Profile</a>
+                <a href="{{ url_for('logout') }}">Logout</a>
+            </nav>
+        </header>
+
+        <main>
+            <h2>List Game for Sale</h2>
+
+            <div class="game-details">
+                <h3>{{ game.title }}</h3>
+                <p><strong>Platform:</strong> {{ game.platform }}</p>
+                <p><strong>Genre:</strong> {{ game.genre }}</p>
+                <p><strong>Condition:</strong> {{ user_game.condition }}</p>
+                <p><strong>Purchase Date:</strong> {{ user_game.purchase_date.strftime('%Y-%m-%d') }}</p>
+            </div>
+
+            <form method="POST" class="sell-form">
+                <label for="sale_price">Sale Price ($):</label>
+                <input type="number" id="sale_price" name="sale_price" step="0.01" min="0.01" required>
+                <button type="submit" class="btn">List for Sale</button>
+            </form>
+
+            <a href="{{ url_for('profile') }}" class="btn secondary">Cancel</a>
+        </main>
+
+        <footer>
+            <p>&copy; 2023 GameHub. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

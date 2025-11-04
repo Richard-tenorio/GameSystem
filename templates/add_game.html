@@ -18,6 +18,8 @@
             {{ form.genre }}<br><br>
             {{ form.quantity.label }}<br>
             {{ form.quantity(min=1) }}<br><br>
+            {{ form.price.label }}<br>
+            {{ form.price(step="0.01") }}<br><br>
             {{ form.submit() }}
         </form>
         <p><a href="{{ url_for('admin_dashboard') }}">← Back to Dashboard</a></p>

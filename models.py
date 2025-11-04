@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
 
 db = SQLAlchemy()
 
@@ -20,9 +21,31 @@ class Game(db.Model):
     title = db.Column(db.String(100), nullable=False)
     platform = db.Column(db.String(50), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
-class Rental(db.Model):
+    price = db.Column(db.Float, nullable=False, default=0.0)
+    genre = db.Column(db.String(50), nullable=True)
+
+class Purchase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
     game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False)
-    rental_date = db.Column(db.DateTime, nullable=False)
-    return_date = db.Column(db.DateTime, nullable=True) 
+    purchase_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    condition = db.Column(db.String(20), nullable=False, default='new')  # 'new' or 'used'
+    price_paid = db.Column(db.Float, nullable=False)
+    seller_username = db.Column(db.String(80), nullable=True)  # for used games
+
+class UserGame(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
+    game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False)
+    condition = db.Column(db.String(20), nullable=False, default='new')
+    purchase_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    listed_for_sale = db.Column(db.Boolean, nullable=False, default=False)
+    sale_price = db.Column(db.Float, nullable=True)
+
+class Rating(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
+    game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)
+    review = db.Column(db.Text, nullable=True)
+    date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)

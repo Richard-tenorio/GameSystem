@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Customer - Game Rentals</title>
+    <title>Customer - GameHub</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -49,6 +49,7 @@
             <th>Title</th>
             <th>Platform</th>
             <th>Quantity</th>
+            <th>Price</th>
             <th>Action</th>
         </tr>
 
@@ -57,20 +58,18 @@
             <td>{{ game.title }}</td>
             <td>{{ game.platform }}</td>
             <td>{{ game.quantity }}</td>
-
+            <td>${{ game.price }}</td>
             <td>
                 {% if game.quantity > 0 %}
-                    <a href="{{ url_for('rent', game_id=game.id) }}" class="trial-link">Rent Game</a>
+                    <a href="{{ url_for('buy', game_id=game.id) }}" class="buy-link">Buy New</a>
                 {% else %}
                     Out of stock
                 {% endif %}
 
-                <a href="{{ url_for('buy', game_id=game.id) }}" class="buy-link">Buy Now</a>
                 <a href="{{ url_for('rate_game', game_id=game.id) }}" class="rate-link">Rate & Review</a>
             </td>
         </tr>
         {% endfor %}
-    </table>
 
     <!-- Pagination -->
     {% if total_pages > 1 %}
@@ -93,6 +92,6 @@
     </div>
     {% endif %}
 
-    <a href="{{ url_for('profile') }}">Profile</a> | <a href="{{ url_for('logout') }}">Logout</a>
+    <a href="{{ url_for('marketplace') }}">Marketplace</a> | <a href="{{ url_for('profile') }}">Profile</a> | <a href="{{ url_for('logout') }}">Logout</a>
 </body>
 </html>

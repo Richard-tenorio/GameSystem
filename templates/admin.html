@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Admin - Game Rental Management</title>
+    <title>Admin - GameHub Management</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -23,8 +23,8 @@
             <p>{{ total_games }}</p>
         </div>
         <div class="stat-item">
-            <h3>Currently Rented</h3>
-            <p>{{ rented_games }}</p>
+            <h3>Games Sold</h3>
+            <p>{{ sold_games }}</p>
         </div>
         <div class="stat-item">
             <h3>Total Users</h3>
@@ -63,7 +63,8 @@
             <th>Title</th>
             <th>Platform</th>
             <th>Available</th>
-            <th>Rented</th>
+            <th>Sold</th>
+            <th>Price</th>
             <th>Action</th>
         </tr>
 
@@ -72,7 +73,8 @@
             <td>{{ game.title }}</td>
             <td>{{ game.platform }}</td>
             <td>{{ game.quantity }}</td>
-            <td>{{ game.rented_count }}</td>
+            <td>{{ game.sold_count }}</td>
+            <td>${{ game.price }}</td>
 
             <td>
                 <form method="post" action="{{ url_for('update_quantity') }}" style="display: inline;">

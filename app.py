@@ -1,24 +1,21 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-import mysql.connector
+from flask_sqlalchemy import SQLAlchemy
+from config import Config
+from models import db, User, Game, Purchase, UserGame, Rating
 import os
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
 
 app = Flask(__name__)
-# WARNING: In a production app, use a strong, secret key loaded from environment variables
-app.secret_key = os.urandom(24)
-app.permanent_session_lifetime = timedelta(minutes=30)
+app.config.from_object(Config)
+db.init_app(app)
 
-# ---------- DATABASE CONNECTION ----------
-# Ensure your MySQL server is running and the database 'gaming_rental_db' exists.
-db = mysql.connector.connect(
-    host="localhost",
-    user="root",        # your MySQL username
-    password="",        # your MySQL password if any
-    database="gaming_rental_db"
-)
-cursor = db.cursor(dictionary=True)
+# Create tables if they don't exist
+with app.app_context():
+    db.create_all()
+
+app.permanent_session_lifetime = timedelta(minutes=30)
 
 def validate_password(password):
     """
@@ -44,17 +41,16 @@ def login():
         password = request.form["password"]
 
         try:
-            cursor.execute("SELECT * FROM users WHERE username=%s", (username,))
-            user = cursor.fetchone()
-            if user and check_password_hash(user["password"], password):
-                if user["role"] == "inactive":
+            user = User.query.filter_by(username=username).first()
+            if user and user.check_password(password):
+                if user.role == "inactive":
                     flash("Your account has been deactivated. Please contact support.", "error")
                 else:
                     session.permanent = True
-                    session["username"] = user["username"]
-                    session["role"] = user["role"]
+                    session["username"] = user.username
+                    session["role"] = user.role
 
-                    if user["role"] == "admin":
+                    if user.role == "admin":
                         return redirect(url_for("admin"))
                     else:
                         return redirect(url_for("customer"))
@@ -80,20 +76,18 @@ def register():
             return render_template("register.html")
 
         try:
-            cursor.execute("SELECT * FROM users WHERE username=%s", (username,))
-            if cursor.fetchone():
+            existing_user = User.query.filter_by(username=username).first()
+            if existing_user:
                 flash("Username already exists. Please choose another.", "error")
             else:
-                hashed_password = generate_password_hash(password)
-                cursor.execute(
-                    "INSERT INTO users (username, password, role) VALUES (%s, %s, %s)",
-                    (username, hashed_password, role)
-                )
-                db.commit()
+                user = User(username=username, role=role)
+                user.set_password(password)
+                db.session.add(user)
+                db.session.commit()
                 flash("Account created successfully. Please log in.", "success")
                 return redirect(url_for("login"))
         except Exception as e:
-            db.rollback()
+            db.session.rollback()
             flash("An internal error occurred.", "error")
 
     return render_template("register.html")
@@ -110,41 +104,25 @@ def admin():
 
     try:
         # Get total games count for pagination
-        cursor.execute("SELECT COUNT(*) as total FROM games")
-        total_games_count = cursor.fetchone()["total"]
+        total_games_count = Game.query.count()
         total_pages = (total_games_count + per_page - 1) // per_page
 
-        # Get games with rental counts with pagination
-        cursor.execute("""
-            SELECT g.*, COUNT(r.id) as rented_count
-            FROM games g
-            LEFT JOIN rentals r ON g.id = r.game_id AND r.status = 'active'
-            GROUP BY g.id
-            ORDER BY g.id
-            LIMIT %s OFFSET %s
-        """, (per_page, offset))
-        games = cursor.fetchall()
+        # Get games with pagination
+        games = Game.query.order_by(Game.id).offset(offset).limit(per_page).all()
 
         # Get statistics
-        cursor.execute("SELECT COUNT(*) as total_games FROM games")
-        total_games = cursor.fetchone()["total_games"]
-
-        cursor.execute("SELECT COUNT(*) as rented_games FROM rentals WHERE status='active'")
-        rented_games = cursor.fetchone()["rented_games"]
-
-        cursor.execute("SELECT COUNT(*) as total_users FROM users WHERE role='customer'")
-        total_users = cursor.fetchone()["total_users"]
-
-        cursor.execute("SELECT COUNT(*) as active_users FROM users WHERE role='customer' AND username IN (SELECT DISTINCT username FROM rentals)")
-        active_users = cursor.fetchone()["active_users"]
+        total_games = Game.query.count()
+        sold_games = Purchase.query.count()
+        total_users = User.query.filter_by(role='customer').count()
+        active_users = User.query.filter_by(role='customer').count()  # All customers are active for now
 
     except Exception as e:
         flash("Error loading dashboard.", "error")
         games = []
-        total_games = rented_games = total_users = active_users = total_pages = 0
+        total_games = sold_games = total_users = active_users = total_pages = 0
         page = 1
 
-    return render_template("admin.html", games=games, total_games=total_games, rented_games=rented_games, total_users=total_users, active_users=active_users, page=page, total_pages=total_pages)
+    return render_template("admin.html", games=games, total_games=total_games, sold_games=sold_games, total_users=total_users, active_users=active_users, page=page, total_pages=total_pages)
 
 # ---------- ADMIN: ADD GAME ----------
 @app.route("/add_game", methods=["POST"])
@@ -156,11 +134,12 @@ def add_game():
         genre = request.form.get("genre", "Action")
 
         try:
-            cursor.execute("INSERT INTO games (title, platform, quantity, genre) VALUES (%s, %s, %s, %s)", (title, platform, quantity, genre))
-            db.commit()
+            game = Game(title=title, platform=platform, quantity=int(quantity), genre=genre)
+            db.session.add(game)
+            db.session.commit()
             flash("Game added successfully.", "success")
         except Exception as e:
-            db.rollback()
+            db.session.rollback()
             flash("Error adding game.", "error")
     return redirect(url_for("admin"))
 
@@ -172,11 +151,15 @@ def update_quantity():
         additional_quantity = request.form["additional_quantity"]
 
         try:
-            cursor.execute("UPDATE games SET quantity = quantity + %s WHERE id=%s", (additional_quantity, game_id))
-            db.commit()
-            flash("Game quantity updated successfully.", "success")
+            game = Game.query.get(int(game_id))
+            if game:
+                game.quantity += int(additional_quantity)
+                db.session.commit()
+                flash("Game quantity updated successfully.", "success")
+            else:
+                flash("Game not found.", "error")
         except Exception as e:
-            db.rollback()
+            db.session.rollback()
             flash("Error updating game quantity.", "error")
     return redirect(url_for("admin"))
 
@@ -185,11 +168,15 @@ def update_quantity():
 def remove_game(game_id):
     if "username" in session and session["role"] == "admin":
         try:
-            cursor.execute("DELETE FROM games WHERE id=%s", (game_id,))
-            db.commit()
-            flash("Game removed successfully.", "success")
+            game = Game.query.get(game_id)
+            if game:
+                db.session.delete(game)
+                db.session.commit()
+                flash("Game removed successfully.", "success")
+            else:
+                flash("Game not found.", "error")
         except Exception as e:
-            db.rollback()
+            db.session.rollback()
             flash("Error removing game.", "error")
     return redirect(url_for("admin"))
 
@@ -200,20 +187,13 @@ def user_management():
         return redirect(url_for("login"))
 
     try:
-        cursor.execute("SELECT username, role FROM users WHERE role IN ('customer', 'inactive') ORDER BY username")
-        users = cursor.fetchall()
+        users = User.query.filter(User.role.in_(['customer', 'inactive'])).order_by(User.username).all()
 
-        # Get activity data for each user
+        # Get activity data for each user (purchases instead of rentals)
         for user in users:
-            cursor.execute("""
-                SELECT COUNT(*) as total_rentals,
-                       COUNT(CASE WHEN status='active' THEN 1 END) as active_rentals,
-                       COUNT(CASE WHEN status='returned' THEN 1 END) as returned_rentals,
-                       COUNT(CASE WHEN status='overdue' THEN 1 END) as overdue_rentals
-                FROM rentals WHERE username=%s
-            """, (user["username"],))
-            activity = cursor.fetchone()
-            user.update(activity)
+            total_purchases = Purchase.query.filter_by(username=user.username).count()
+            user.total_purchases = total_purchases
+            user.active_purchases = total_purchases  # All purchases are active
 
     except Exception as e:
         flash("Error loading user management.", "error")
@@ -226,11 +206,15 @@ def user_management():
 def deactivate_user(username):
     if "username" in session and session["role"] == "admin":
         try:
-            cursor.execute("UPDATE users SET role='inactive' WHERE username=%s", (username,))
-            db.commit()
-            flash(f"User '{username}' has been deactivated.", "success")
+            user = User.query.filter_by(username=username).first()
+            if user:
+                user.role = 'inactive'
+                db.session.commit()
+                flash(f"User '{username}' has been deactivated.", "success")
+            else:
+                flash("User not found.", "error")
         except Exception as e:
-            db.rollback()
+            db.session.rollback()
             flash("Error deactivating user.", "error")
     return redirect(url_for("user_management"))
 
@@ -239,11 +223,15 @@ def deactivate_user(username):
 def reactivate_user(username):
     if "username" in session and session["role"] == "admin":
         try:
-            cursor.execute("UPDATE users SET role='customer' WHERE username=%s", (username,))
-            db.commit()
-            flash(f"User '{username}' has been reactivated.", "success")
+            user = User.query.filter_by(username=username).first()
+            if user:
+                user.role = 'customer'
+                db.session.commit()
+                flash(f"User '{username}' has been reactivated.", "success")
+            else:
+                flash("User not found.", "error")
         except Exception as e:
-            db.rollback()
+            db.session.rollback()
             flash("Error reactivating user.", "error")
     return redirect(url_for("user_management"))
 
@@ -262,41 +250,27 @@ def customer():
     genre_filter = request.args.get('genre', '')
 
     try:
-        # Build the base query with filters
-        query = "SELECT * FROM games WHERE 1=1"
-        count_query = "SELECT COUNT(*) as total FROM games WHERE 1=1"
-        params = []
+        # Build the query with filters
+        query = Game.query
 
         if search:
-            query += " AND title LIKE %s"
-            count_query += " AND title LIKE %s"
-            params.append(f"%{search}%")
+            query = query.filter(Game.title.ilike(f"%{search}%"))
 
         if platform_filter:
-            query += " AND platform = %s"
-            count_query += " AND platform = %s"
-            params.append(platform_filter)
+            query = query.filter_by(platform=platform_filter)
 
         if genre_filter:
-            query += " AND genre = %s"
-            count_query += " AND genre = %s"
-            params.append(genre_filter)
+            query = query.filter_by(genre=genre_filter)
 
         # Get total count for pagination
-        cursor.execute(count_query, params)
-        total_games_count = cursor.fetchone()["total"]
+        total_games_count = query.count()
         total_pages = (total_games_count + per_page - 1) // per_page
 
-        # Add pagination to the query
-        query += " ORDER BY id LIMIT %s OFFSET %s"
-        params.extend([per_page, offset])
-
-        cursor.execute(query, params)
-        games = cursor.fetchall()
+        # Add pagination
+        games = query.order_by(Game.id).offset(offset).limit(per_page).all()
 
         # Get unique platforms for filter dropdown
-        cursor.execute("SELECT DISTINCT platform FROM games")
-        platforms = [row['platform'] for row in cursor.fetchall()]
+        platforms = [p[0] for p in db.session.query(Game.platform).distinct().all()]
     except Exception as e:
         flash("Error loading games.", "error")
         games = []
@@ -305,107 +279,31 @@ def customer():
         page = 1
     return render_template("customer.html", games=games, platforms=platforms, search=search, platform_filter=platform_filter, genre_filter=genre_filter, page=page, total_pages=total_pages)
 
-# ---------- CUSTOMER: RENT GAME ----------
-@app.route("/rent/<int:game_id>")
-def rent(game_id):
-    if "username" in session and session["role"] == "customer":
-        try:
-            # Check if user already has this game rented
-            cursor.execute("SELECT id FROM rentals WHERE username=%s AND game_id=%s AND status='active'", (session["username"], game_id))
-            existing_rental = cursor.fetchone()
-
-            if existing_rental:
-                flash("You already have this game rented.", "error")
-                return redirect(url_for("customer"))
-
-            # Check if game is available
-            cursor.execute("SELECT quantity FROM games WHERE id=%s", (game_id,))
-            game = cursor.fetchone()
-
-            if not game or game["quantity"] <= 0:
-                flash("Game is out of stock.", "error")
-                return redirect(url_for("customer"))
-
-            # Calculate due date (7 days from now)
-            due_date = (datetime.now() + timedelta(days=7)).date()
-
-            # Insert rental record
-            cursor.execute("""
-                INSERT INTO rentals (username, game_id, due_date)
-                VALUES (%s, %s, %s)
-            """, (session["username"], game_id, due_date))
-
-            # Decrease game quantity
-            cursor.execute("UPDATE games SET quantity = quantity - 1 WHERE id=%s", (game_id,))
-
-            db.commit()
-            flash(f"Game rented successfully! Due date: {due_date}", "success")
-        except Exception as e:
-            db.rollback()
-            flash("Error renting game.", "error")
-    return redirect(url_for("customer"))
-
-# ---------- CUSTOMER: RETURN GAME ----------
-@app.route("/return/<int:rental_id>")
-def return_game(rental_id):
-    if "username" in session and session["role"] == "customer":
-        try:
-            # Get rental details
-            cursor.execute("""
-                SELECT r.game_id, r.status, g.title
-                FROM rentals r
-                JOIN games g ON r.game_id = g.id
-                WHERE r.id=%s AND r.username=%s AND r.status='active'
-            """, (rental_id, session["username"]))
-            rental = cursor.fetchone()
-
-            if not rental:
-                flash("Rental not found or already returned.", "error")
-                return redirect(url_for("profile"))
-
-            # Update rental status
-            cursor.execute("""
-                UPDATE rentals
-                SET status='returned', return_date=NOW()
-                WHERE id=%s
-            """, (rental_id,))
-
-            # Increase game quantity
-            cursor.execute("UPDATE games SET quantity = quantity + 1 WHERE id=%s", (rental["game_id"],))
-
-            db.commit()
-            flash(f"Game '{rental['title']}' returned successfully!", "success")
-        except Exception as e:
-            db.rollback()
-            flash("Error returning game.", "error")
-    return redirect(url_for("profile"))
-
 # ---------- CUSTOMER: BUY GAME ----------
 @app.route("/buy/<int:game_id>")
 def buy(game_id):
     if "username" in session and session["role"] == "customer":
         try:
-            # Check if game is available
-            cursor.execute("SELECT quantity FROM games WHERE id=%s", (game_id,))
-            game = cursor.fetchone()
-
-            if not game or game["quantity"] <= 0:
+            game = Game.query.get(game_id)
+            if not game or game.quantity <= 0:
                 flash("Game is out of stock.", "error")
                 return redirect(url_for("customer"))
 
-            # Insert purchase record as a rental with status 'purchased'
-            cursor.execute("""
-                INSERT INTO rentals (username, game_id, rental_date, status)
-                VALUES (%s, %s, NOW(), 'purchased')
-            """, (session["username"], game_id))
+            # Create purchase record
+            purchase = Purchase(username=session["username"], game_id=game_id, price_paid=game.price)
+            db.session.add(purchase)
+
+            # Create user game entry
+            user_game = UserGame(username=session["username"], game_id=game_id, condition='new')
+            db.session.add(user_game)
 
             # Decrease game quantity
-            cursor.execute("UPDATE games SET quantity = quantity - 1 WHERE id=%s", (game_id,))
+            game.quantity -= 1
 
-            db.commit()
+            db.session.commit()
             flash("Game purchased successfully.", "success")
         except Exception as e:
-            db.rollback()
+            db.session.rollback()
             flash("Error purchasing game.", "error")
     return redirect(url_for("customer"))
 
@@ -421,68 +319,169 @@ def profile():
         is_valid, message = validate_password(new_password)
         if not is_valid:
             flash(message, "error")
-            # Get user's rental history and ratings to render template with error
+            # Get user's purchase history, owned games, and ratings to render template with error
             try:
-                cursor.execute("""
-                    SELECT r.id, r.rental_date, r.due_date, r.return_date, r.status,
-                           g.title, g.platform, g.genre
-                    FROM rentals r
-                    JOIN games g ON r.game_id = g.id
-                    WHERE r.username = %s
-                    ORDER BY r.rental_date DESC
-                """, (session["username"],))
-                rentals = cursor.fetchall()
+                purchases = Purchase.query.filter_by(username=session["username"]).join(Game).order_by(Purchase.purchase_date.desc()).all()
             except Exception as e:
-                rentals = []
+                purchases = []
             try:
-                cursor.execute("""
-                    SELECT r.rating, r.review, r.date, g.title, g.platform
-                    FROM ratings r
-                    JOIN games g ON r.game_id = g.id
-                    WHERE r.username = %s
-                    ORDER BY r.date DESC
-                """, (session["username"],))
-                ratings = cursor.fetchall()
+                user_games = UserGame.query.filter_by(username=session["username"]).join(Game).order_by(UserGame.purchase_date.desc()).all()
+            except Exception as e:
+                user_games = []
+            try:
+                ratings = Rating.query.filter_by(username=session["username"]).join(Game).order_by(Rating.date.desc()).all()
             except Exception as e:
                 ratings = []
-            return render_template("profile.html", rentals=rentals, ratings=ratings)
+            return render_template("profile.html", purchases=purchases, user_games=user_games, ratings=ratings)
         try:
-            hashed_password = generate_password_hash(new_password)
-            cursor.execute("UPDATE users SET password=%s WHERE username=%s", (hashed_password, session["username"]))
-            db.commit()
+            user = User.query.filter_by(username=session["username"]).first()
+            user.set_password(new_password)
+            db.session.commit()
             flash("Password updated successfully.", "success")
         except Exception as e:
-            db.rollback()
+            db.session.rollback()
             flash("Error updating password.", "error")
 
-    # Get user's rental history
+    # Get user's purchase history
     try:
-        cursor.execute("""
-            SELECT r.id, r.rental_date, r.due_date, r.return_date, r.status,
-                   g.title, g.platform, g.genre
-            FROM rentals r
-            JOIN games g ON r.game_id = g.id
-            WHERE r.username = %s
-            ORDER BY r.rental_date DESC
-        """, (session["username"],))
-        rentals = cursor.fetchall()
+        purchases = Purchase.query.filter_by(username=session["username"]).join(Game).order_by(Purchase.purchase_date.desc()).all()
     except Exception as e:
-        rentals = []
+        purchases = []
+
+    # Get user's owned games
+    try:
+        user_games = UserGame.query.filter_by(username=session["username"]).join(Game).order_by(UserGame.purchase_date.desc()).all()
+    except Exception as e:
+        user_games = []
 
     # Get user's ratings and reviews
     try:
-        cursor.execute("""
-            SELECT r.rating, r.review, r.date, g.title, g.platform
-            FROM ratings r
-            JOIN games g ON r.game_id = g.id
-            WHERE r.username = %s
-            ORDER BY r.date DESC
-        """, (session["username"],))
-        ratings = cursor.fetchall()
+        ratings = Rating.query.filter_by(username=session["username"]).join(Game).order_by(Rating.date.desc()).all()
     except Exception as e:
         ratings = []
 
-    return render_template("profile.html", rentals=rentals, ratings=ratings)
+    return render_template("profile.html", purchases=purchases, user_games=user_games, ratings=ratings)
+
+# ---------- CUSTOMER: MARKETPLACE ----------
+@app.route("/marketplace")
+def marketplace():
+    if "username" not in session or session["role"] != "customer":
+        return redirect(url_for("login"))
+
+    page = int(request.args.get('page', 1))
+    per_page = 12
+    offset = (page - 1) * per_page
+
+    search = request.args.get('search', '')
+    platform_filter = request.args.get('platform', '')
+    genre_filter = request.args.get('genre', '')
+
+    try:
+        # Build the query with filters
+        query = UserGame.query.filter_by(listed_for_sale=True).join(Game)
+
+        if search:
+            query = query.filter(Game.title.ilike(f"%{search}%"))
+
+        if platform_filter:
+            query = query.filter(Game.platform == platform_filter)
+
+        if genre_filter:
+            query = query.filter(Game.genre == genre_filter)
+
+        # Get total count for pagination
+        total_games_count = query.count()
+        total_pages = (total_games_count + per_page - 1) // per_page
+
+        # Add pagination
+        user_games = query.order_by(UserGame.purchase_date).offset(offset).limit(per_page).all()
+
+        # Get unique platforms for filter dropdown
+        platforms = [p[0] for p in db.session.query(Game.platform).distinct().all()]
+    except Exception as e:
+        flash("Error loading marketplace.", "error")
+        user_games = []
+        platforms = []
+        total_pages = 0
+        page = 1
+
+    return render_template("marketplace.html", user_games=user_games, platforms=platforms, search=search, platform_filter=platform_filter, genre_filter=genre_filter, page=page, total_pages=total_pages)
+
+# ---------- CUSTOMER: SELL GAME ----------
+@app.route("/sell/<int:user_game_id>", methods=["GET", "POST"])
+def sell(user_game_id):
+    if "username" not in session or session["role"] != "customer":
+        return redirect(url_for("login"))
+
+    try:
+        user_game = UserGame.query.get(user_game_id)
+        if not user_game or user_game.username != session["username"]:
+            flash("Game not found or you don't own this game.", "error")
+            return redirect(url_for("profile"))
+
+        game = Game.query.get(user_game.game_id)
+    except Exception as e:
+        flash("Error loading game.", "error")
+        return redirect(url_for("profile"))
+
+    if request.method == "POST":
+        sale_price = request.form.get("sale_price", "").strip()
+        try:
+            sale_price = float(sale_price)
+            if sale_price <= 0:
+                flash("Sale price must be greater than 0.", "error")
+                return render_template("sell_game.html", user_game=user_game, game=game)
+        except ValueError:
+            flash("Invalid sale price.", "error")
+            return render_template("sell_game.html", user_game=user_game, game=game)
+
+        try:
+            user_game.listed_for_sale = True
+            user_game.sale_price = sale_price
+            db.session.commit()
+            flash("Game listed for sale successfully.", "success")
+            return redirect(url_for("profile"))
+        except Exception as e:
+            db.session.rollback()
+            flash("Error listing game for sale.", "error")
+
+    return render_template("sell_game.html", user_game=user_game, game=game)
+
+# ---------- CUSTOMER: BUY USED GAME ----------
+@app.route("/buy_used/<int:user_game_id>")
+def buy_used(user_game_id):
+    if "username" in session and session["role"] == "customer":
+        try:
+            user_game = UserGame.query.get(user_game_id)
+            if not user_game or not user_game.listed_for_sale:
+                flash("Game not found or not for sale.", "error")
+                return redirect(url_for("marketplace"))
+
+            if user_game.username == session["username"]:
+                flash("You cannot buy your own game.", "error")
+                return redirect(url_for("marketplace"))
+
+            game = Game.query.get(user_game.game_id)
+            if not game:
+                flash("Game not found.", "error")
+                return redirect(url_for("marketplace"))
+
+            # Create purchase record
+            purchase = Purchase(username=session["username"], game_id=user_game.game_id, condition='used', price_paid=user_game.sale_price, seller_username=user_game.username)
+            db.session.add(purchase)
+
+            # Transfer ownership
+            user_game.username = session["username"]
+            user_game.listed_for_sale = False
+            user_game.sale_price = None
+            user_game.purchase_date = datetime.utcnow()
+
+            db.session.commit()
+            flash("Used game purchased successfully.", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash("Error purchasing used game.", "error")
+    return redirect(url_for("marketplace"))
 
 # ---------- CUSTOMER: RATE GAME ----------
 @app.route("/rate_game/<int:game_id>", methods=["GET", "POST"])
@@ -491,10 +490,15 @@ def rate_game(game_id):
         return redirect(url_for("login"))
 
     try:
-        cursor.execute("SELECT * FROM games WHERE id=%s", (game_id,))
-        game = cursor.fetchone()
+        game = Game.query.get(game_id)
         if not game:
             flash("Game not found.", "error")
+            return redirect(url_for("customer"))
+
+        # Check if user owns this game
+        owned = UserGame.query.filter_by(username=session["username"], game_id=game_id).first()
+        if not owned:
+            flash("You can only rate games you own.", "error")
             return redirect(url_for("customer"))
     except Exception as e:
         flash("Error loading game.", "error")
@@ -506,22 +510,23 @@ def rate_game(game_id):
 
         try:
             # Check if user already rated this game
-            cursor.execute("SELECT id FROM ratings WHERE username=%s AND game_id=%s", (session["username"], game_id))
-            existing = cursor.fetchone()
+            existing = Rating.query.filter_by(username=session["username"], game_id=game_id).first()
 
             if existing:
                 # Update existing rating
-                cursor.execute("UPDATE ratings SET rating=%s, review=%s WHERE id=%s", (rating, review, existing["id"]))
+                existing.rating = int(rating)
+                existing.review = review
+                existing.date = datetime.utcnow()
             else:
                 # Insert new rating
-                cursor.execute("INSERT INTO ratings (username, game_id, rating, review) VALUES (%s, %s, %s, %s)",
-                             (session["username"], game_id, rating, review))
+                new_rating = Rating(username=session["username"], game_id=game_id, rating=int(rating), review=review)
+                db.session.add(new_rating)
 
-            db.commit()
+            db.session.commit()
             flash("Rating submitted successfully!", "success")
             return redirect(url_for("profile"))
         except Exception as e:
-            db.rollback()
+            db.session.rollback()
             flash("Error submitting rating.", "error")
 
     return render_template("rate_game.html", game=game)

@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>User Management - Game Rentals</title>
+    <title>User Management - GameHub</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -22,10 +22,10 @@
         <tr>
             <th>Username</th>
             <th>Status</th>
-            <th>Total Rentals</th>
-            <th>Active Rentals</th>
-            <th>Returned Rentals</th>
-            <th>Overdue Rentals</th>
+            <th>Total Purchases</th>
+            <th>Active Games</th>
+            <th>Owned Games</th>
+            <th>Listed for Sale</th>
             <th>Actions</th>
         </tr>
         {% for user in users %}
