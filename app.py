@@ -6,6 +6,7 @@ import os
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
+import logging
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -16,6 +17,8 @@ with app.app_context():
     db.create_all()
 
 app.permanent_session_lifetime = timedelta(minutes=30)
+
+
 
 def validate_password(password):
     """
@@ -116,6 +119,10 @@ def admin():
         # Get games with pagination
         games = Game.query.order_by(Game.id).offset(offset).limit(per_page).all()
 
+        # Calculate sold count for each game
+        for game in games:
+            game.sold_count = Purchase.query.filter_by(game_id=game.id).count()
+
         # Get statistics
         total_games = Game.query.count()
         sold_games = Purchase.query.count()
@@ -138,13 +145,23 @@ def add_game():
         platform = request.form["platform"].strip()
         quantity = request.form["quantity"].strip()
         genre = request.form.get("genre", "Action").strip()
+        price = request.form["price"].strip()
 
         # Validate inputs
         if not title:
             flash("Game title cannot be empty.", "error")
             return redirect(url_for("admin"))
+        if len(title) > 100:
+            flash("Game title must be 100 characters or less.", "error")
+            return redirect(url_for("admin"))
         if not platform:
             flash("Platform cannot be empty.", "error")
+            return redirect(url_for("admin"))
+        if len(platform) > 50:
+            flash("Platform must be 50 characters or less.", "error")
+            return redirect(url_for("admin"))
+        if not genre:
+            flash("Genre cannot be empty.", "error")
             return redirect(url_for("admin"))
         try:
             quantity_int = int(quantity)
@@ -154,6 +171,14 @@ def add_game():
         except ValueError:
             flash("Quantity must be a valid integer.", "error")
             return redirect(url_for("admin"))
+        try:
+            price_float = float(price)
+            if price_float <= 0:
+                flash("Price must be a positive number.", "error")
+                return redirect(url_for("admin"))
+        except ValueError:
+            flash("Price must be a valid number.", "error")
+            return redirect(url_for("admin"))
 
         # Check if game title already exists
         existing_game = Game.query.filter_by(title=title).first()
@@ -162,7 +187,7 @@ def add_game():
             return redirect(url_for("admin"))
 
         try:
-            game = Game(title=title, platform=platform, quantity=quantity_int, genre=genre)
+            game = Game(title=title, platform=platform, quantity=quantity_int, genre=genre, price=price_float)
             db.session.add(game)
             db.session.commit()
             flash("Game added successfully.", "success")
@@ -500,6 +525,7 @@ def buy_used(user_game_id):
 
             # Transfer ownership
             user_game.username = session["username"]
+            user_game.condition = 'used'
             user_game.listed_for_sale = False
             user_game.sale_price = None
             user_game.purchase_date = datetime.utcnow()

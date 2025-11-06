@@ -4,17 +4,22 @@
     <meta charset="utf-8" />
     <title>Admin - GameHub Management</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .error-text { color: red; font-size: 14px; margin-top: -5px; margin-bottom: 10px; }
+    </style>
 </head>
 <body>
     <h1>Welcome Admin, {{ session['username'] }}</h1>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="flash {{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+    {% set messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
 
     <h2>Dashboard Statistics</h2>
     <div class="stats">
@@ -38,22 +43,28 @@
 
     <h2>Add New Game</h2>
     <form method="post" action="{{ url_for('add_game') }}">
-        <input type="text" name="title" placeholder="Game Title" required>
-        <input type="text" name="platform" placeholder="Platform (e.g., PS5, Xbox)" required>
-        <select name="genre" required>
+        <input type="text" name="title" placeholder="Game Title" value="{{ request.form.title or '' }}">
+        {% if errors.title %}<div class="error-text">{{ errors.title }}</div>{% endif %}
+
+        <input type="text" name="platform" placeholder="Platform (e.g., PS5, Xbox)" value="{{ request.form.platform or '' }}">
+        {% if errors.platform %}<div class="error-text">{{ errors.platform }}</div>{% endif %}
+
+        <select name="genre">
             <option value="">Select Genre</option>
-            <option value="Action">Action</option>
-            <option value="Adventure">Adventure</option>
-            <option value="RPG">RPG</option>
-            <option value="Strategy">Strategy</option>
-            <option value="Sports">Sports</option>
-            <option value="Racing">Racing</option>
-            <option value="Simulation">Simulation</option>
-            <option value="Puzzle">Puzzle</option>
-            <option value="Horror">Horror</option>
-            <option value="Fighting">Fighting</option>
+            {% for genre in ['Action','Adventure','RPG','Strategy','Sports','Racing','Simulation','Puzzle','Horror','Fighting'] %}
+                <option value="{{ genre }}" {% if request.form.genre == genre %}selected{% endif %}>{{ genre }}</option>
+            {% endfor %}
         </select>
-        <input type="number" name="quantity" placeholder="Quantity" required>
+        {% if errors.genre %}<div class="error-text">{{ errors.genre }}</div>{% endif %}
+
+        <input type="number" name="quantity" placeholder="Quantity" value="{{ request.form.quantity or '' }}">
+        {% if errors.quantity %}<div class="error-text">{{ errors.quantity }}</div>{% endif %}
+
+        <input type="number" step="0.01" name="price" placeholder="Price (e.g., 59.99)" value="{{ request.form.price or '' }}">
+        {% if errors.price %}<div class="error-text">{{ errors.price }}</div>{% endif %}
+
+        <label><input type="checkbox" name="confirm" required> Confirm add game</label>
+
         <button type="submit">Add Game</button>
     </form>
 
