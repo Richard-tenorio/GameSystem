@@ -132,6 +132,11 @@ def admin():
         # Get all users for the list
         users = User.query.order_by(User.username).all()
 
+        # Check for pending suggestions and notify admin
+        pending_count = GameSuggestion.query.filter_by(status='pending').count()
+        if pending_count > 0:
+            flash(f"There are {pending_count} pending game suggestions to review.", "info")
+
     except Exception as e:
         flash("Error loading dashboard.", "error")
         games = []
