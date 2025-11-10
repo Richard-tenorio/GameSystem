@@ -1,24 +1,133 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <title>Manage Suggestions</title>
+    <meta charset="utf-8" />
+    <title>Manage Suggestions - GameHub Admin</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
         .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background-color: #f2f2f2; }
-        .status-pending { color: orange; }
-        .status-approved { color: green; }
-        .status-rejected { color: red; }
+        .status-pending { color: #ffa726; font-weight: bold; }
+        .status-approved { color: #66bb6a; font-weight: bold; }
+        .status-rejected { color: #ef5350; font-weight: bold; }
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            margin: 2px;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        .approve-btn {
+            background-color: #4caf50;
+            color: white;
+        }
+        .approve-btn:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+        .reject-btn {
+            background-color: #f44336;
+            color: white;
+        }
+        .reject-btn:hover {
+            background-color: #da190b;
+            transform: scale(1.05);
+        }
+        .suggestion-card {
+            background: rgba(35, 35, 35, 0.9);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            margin: 15px 0;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .suggestion-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+        }
+        .suggestion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .suggestion-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffffff;
+            margin: 0;
+        }
+        .suggestion-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 14px;
+            color: #bdbdbd;
+        }
+        .suggestion-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .suggestion-description {
+            color: #e0e0e0;
+            margin: 15px 0;
+            line-height: 1.5;
+        }
+        .suggestion-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+        }
+        .suggestion-status {
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .suggestion-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .no-suggestions {
+            text-align: center;
+            color: #888;
+            font-size: 18px;
+            margin: 40px 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: rgba(50, 50, 50, 0.8);
+            color: #bdbdbd;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        .back-link:hover {
+            background: rgba(70, 70, 70, 0.9);
+            color: #ffffff;
+        }
     </style>
 </head>
 <body>
-    <div class="box">
-        <h1>Manage Game Suggestions</h1>
+    <header class="header-nav">
+        <div class="nav-links">
+            <a href="{{ url_for('admin') }}"><i class="fas fa-tachometer-alt icon"></i>Dashboard</a>
+            <a href="{{ url_for('user_management') }}"><i class="fas fa-users-cog icon"></i>User Management</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <h1><i class="fas fa-list-check icon"></i>Manage Game Suggestions</h1>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -29,46 +138,53 @@
         {% endwith %}
 
         {% if suggestions %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Platform</th>
-                        <th>Genre</th>
-                        <th>Description</th>
-                        <th>Suggested By</th>
-                        <th>Date Suggested</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for suggestion in suggestions %}
-                        <tr>
-                            <td>{{ suggestion.title }}</td>
-                            <td>{{ suggestion.platform }}</td>
-                            <td>{{ suggestion.genre }}</td>
-                            <td>{{ suggestion.description or 'N/A' }}</td>
-                            <td>{{ suggestion.suggested_by }}</td>
-                            <td>{{ suggestion.date_suggested.strftime('%Y-%m-%d %H:%M') }}</td>
-                            <td class="status-{{ suggestion.status }}">{{ suggestion.status.title() }}</td>
-                            <td>
-                                {% if suggestion.status == 'pending' %}
-                                    <a href="{{ url_for('approve_suggestion', suggestion_id=suggestion.id) }}">Approve</a> |
-                                    <a href="{{ url_for('reject_suggestion', suggestion_id=suggestion.id) }}">Reject</a>
-                                {% else %}
-                                    N/A
-                                {% endif %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            {% for suggestion in suggestions %}
+                <div class="suggestion-card">
+                    <div class="suggestion-header">
+                        <h2 class="suggestion-title">{{ suggestion.title }}</h2>
+                        <div class="suggestion-meta">
+                            <span><i class="fas fa-gamepad"></i>{{ suggestion.platform }}</span>
+                            <span><i class="fas fa-tag"></i>{{ suggestion.genre }}</span>
+                            <span><i class="fas fa-user"></i>{{ suggestion.suggested_by }}</span>
+                            <span><i class="fas fa-calendar"></i>{{ suggestion.date_suggested.strftime('%Y-%m-%d %H:%M') }}</span>
+                        </div>
+                    </div>
+
+                    {% if suggestion.description %}
+                        <div class="suggestion-description">
+                            {{ suggestion.description }}
+                        </div>
+                    {% endif %}
+
+                    <div class="suggestion-footer">
+                        <span class="suggestion-status status-{{ suggestion.status }}">
+                            {{ suggestion.status.title() }}
+                        </span>
+                        <div class="suggestion-actions">
+                            {% if suggestion.status == 'pending' %}
+                                <a href="{{ url_for('approve_suggestion', suggestion_id=suggestion.id) }}" class="action-btn approve-btn">
+                                    <i class="fas fa-check"></i> Approve
+                                </a>
+                                <a href="{{ url_for('reject_suggestion', suggestion_id=suggestion.id) }}" class="action-btn reject-btn">
+                                    <i class="fas fa-times"></i> Reject
+                                </a>
+                            {% else %}
+                                <span style="color: #666; font-style: italic;">Action completed</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
         {% else %}
-            <p>No suggestions found.</p>
+            <div class="no-suggestions">
+                <i class="fas fa-inbox fa-3x" style="display: block; margin-bottom: 20px; color: #555;"></i>
+                No game suggestions found.
+            </div>
         {% endif %}
 
-        <p><a href="{{ url_for('admin') }}">← Back to Dashboard</a></p>
-    </div>
+        <a href="{{ url_for('admin') }}" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </main>
 </body>
 </html>
