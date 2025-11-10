@@ -681,7 +681,7 @@ def suggest_game():
             return redirect(url_for("customer"))
         except Exception as e:
             db.session.rollback()
-            flash("Error submitting suggestion.", "error")
+            flash(f"Error submitting suggestion: {str(e)}", "error")
 
     return render_template("suggest_game.html")
 
