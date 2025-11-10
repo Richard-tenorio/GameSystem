@@ -49,3 +49,12 @@ class Rating(db.Model):
     rating = db.Column(db.Integer, nullable=False)
     review = db.Column(db.Text, nullable=True)
     date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+class GameSuggestion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    platform = db.Column(db.String(50), nullable=False)
+    genre = db.Column(db.String(50), nullable=True)
+    suggested_by = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='pending')  # 'pending', 'approved', 'rejected'
+    date_suggested = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)

@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from config import Config
-from models import db, User, Game, Purchase, UserGame, Rating
+from models import db, User, Game, Purchase, UserGame, Rating, GameSuggestion
 import os
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -71,7 +71,7 @@ def register():
         username = request.form["username"]
         password = request.form["password"]
         confirm_password = request.form["confirm_password"]
-        role = request.form["role"]
+        role = "customer"
 
         # Check if passwords match
         if password != confirm_password:
@@ -129,13 +129,17 @@ def admin():
         total_users = User.query.filter_by(role='customer').count()
         active_users = User.query.filter_by(role='customer').count()  # All customers are active for now
 
+        # Get all users for the list
+        users = User.query.order_by(User.username).all()
+
     except Exception as e:
         flash("Error loading dashboard.", "error")
         games = []
+        users = []
         total_games = sold_games = total_users = active_users = total_pages = 0
         page = 1
 
-    return render_template("admin.html", games=games, total_games=total_games, sold_games=sold_games, total_users=total_users, active_users=active_users, page=page, total_pages=total_pages)
+    return render_template("admin.html", games=games, users=users, total_games=total_games, sold_games=sold_games, total_users=total_users, active_users=active_users, page=page, total_pages=total_pages, errors={})
 
 # ---------- ADMIN: ADD GAME ----------
 @app.route("/add_game", methods=["POST"])
@@ -288,6 +292,54 @@ def reactivate_user(username):
             flash("Error reactivating user.", "error")
     return redirect(url_for("user_management"))
 
+# ---------- ADMIN: MANAGE SUGGESTIONS ----------
+@app.route("/manage_suggestions")
+def manage_suggestions():
+    if "username" not in session or session["role"] != "admin":
+        return redirect(url_for("login"))
+
+    try:
+        suggestions = GameSuggestion.query.order_by(GameSuggestion.date_suggested.desc()).all()
+    except Exception as e:
+        flash("Error loading suggestions.", "error")
+        suggestions = []
+
+    return render_template("manage_suggestions.html", suggestions=suggestions)
+
+# ---------- ADMIN: APPROVE SUGGESTION ----------
+@app.route("/approve_suggestion/<int:suggestion_id>")
+def approve_suggestion(suggestion_id):
+    if "username" in session and session["role"] == "admin":
+        try:
+            suggestion = GameSuggestion.query.get(suggestion_id)
+            if suggestion:
+                suggestion.status = 'approved'
+                db.session.commit()
+                flash("Suggestion approved successfully.", "success")
+            else:
+                flash("Suggestion not found.", "error")
+        except Exception as e:
+            db.session.rollback()
+            flash("Error approving suggestion.", "error")
+    return redirect(url_for("manage_suggestions"))
+
+# ---------- ADMIN: REJECT SUGGESTION ----------
+@app.route("/reject_suggestion/<int:suggestion_id>")
+def reject_suggestion(suggestion_id):
+    if "username" in session and session["role"] == "admin":
+        try:
+            suggestion = GameSuggestion.query.get(suggestion_id)
+            if suggestion:
+                suggestion.status = 'rejected'
+                db.session.commit()
+                flash("Suggestion rejected.", "success")
+            else:
+                flash("Suggestion not found.", "error")
+        except Exception as e:
+            db.session.rollback()
+            flash("Error rejecting suggestion.", "error")
+    return redirect(url_for("manage_suggestions"))
+
 # ---------- CUSTOMER DASHBOARD ----------
 @app.route("/customer")
 def customer():
@@ -303,34 +355,61 @@ def customer():
     genre_filter = request.args.get('genre', '')
 
     try:
-        # Build the query with filters
-        query = Game.query
+        # Get official games (added by admin)
+        official_query = Game.query
 
         if search:
-            query = query.filter(Game.title.ilike(f"%{search}%"))
+            official_query = official_query.filter(Game.title.ilike(f"%{search}%"))
 
         if platform_filter:
-            query = query.filter_by(platform=platform_filter)
+            official_query = official_query.filter_by(platform=platform_filter)
 
         if genre_filter:
-            query = query.filter_by(genre=genre_filter)
+            official_query = official_query.filter_by(genre=genre_filter)
 
-        # Get total count for pagination
-        total_games_count = query.count()
+        official_games = official_query.order_by(Game.id).offset(offset).limit(per_page).all()
+
+        # Get community games (approved suggestions)
+        community_games = []
+        community_query = GameSuggestion.query.filter_by(status='approved')
+
+        if search:
+            community_query = community_query.filter(GameSuggestion.title.ilike(f"%{search}%"))
+
+        if platform_filter:
+            community_query = community_query.filter_by(platform=platform_filter)
+
+        if genre_filter:
+            community_query = community_query.filter_by(genre=genre_filter)
+
+        community_suggestions = community_query.order_by(GameSuggestion.date_suggested.desc()).offset(offset).limit(per_page).all()
+
+        # Convert suggestions to game-like objects for template
+        for suggestion in community_suggestions:
+            game_like = type('GameLike', (), {})()
+            game_like.id = suggestion.id
+            game_like.title = suggestion.title
+            game_like.platform = suggestion.platform
+            game_like.genre = suggestion.genre
+            game_like.quantity = 999  # Unlimited for community games
+            game_like.price = 0.0  # Free or set price
+            game_like.is_community = True
+            community_games.append(game_like)
+
+        # Combine games for pagination (simplified)
+        all_games = official_games + community_games
+        total_games_count = official_query.count() + community_query.count()
         total_pages = (total_games_count + per_page - 1) // per_page
-
-        # Add pagination
-        games = query.order_by(Game.id).offset(offset).limit(per_page).all()
 
         # Get unique platforms for filter dropdown
         platforms = [p[0] for p in db.session.query(Game.platform).distinct().all()]
     except Exception as e:
         flash("Error loading games.", "error")
-        games = []
+        all_games = []
         platforms = []
         total_pages = 0
         page = 1
-    return render_template("customer.html", games=games, platforms=platforms, search=search, platform_filter=platform_filter, genre_filter=genre_filter, page=page, total_pages=total_pages)
+    return render_template("customer.html", games=all_games, platforms=platforms, search=search, platform_filter=platform_filter, genre_filter=genre_filter, page=page, total_pages=total_pages)
 
 # ---------- CUSTOMER: BUY GAME ----------
 @app.route("/buy/<int:game_id>")
@@ -338,23 +417,38 @@ def buy(game_id):
     if "username" in session and session["role"] == "customer":
         try:
             game = Game.query.get(game_id)
-            if not game or game.quantity <= 0:
-                flash("Game is out of stock.", "error")
-                return redirect(url_for("customer"))
+            if game:
+                if game.quantity <= 0:
+                    flash("Game is out of stock.", "error")
+                    return redirect(url_for("customer"))
 
-            # Create purchase record
-            purchase = Purchase(username=session["username"], game_id=game_id, price_paid=game.price)
-            db.session.add(purchase)
+                # Create purchase record
+                purchase = Purchase(username=session["username"], game_id=game_id, price_paid=game.price)
+                db.session.add(purchase)
 
-            # Create user game entry
-            user_game = UserGame(username=session["username"], game_id=game_id, condition='new')
-            db.session.add(user_game)
+                # Create user game entry
+                user_game = UserGame(username=session["username"], game_id=game_id, condition='new')
+                db.session.add(user_game)
 
-            # Decrease game quantity
-            game.quantity -= 1
+                # Decrease game quantity
+                game.quantity -= 1
 
-            db.session.commit()
-            flash("Game purchased successfully.", "success")
+                db.session.commit()
+                flash("Game purchased successfully.", "success")
+            else:
+                # Check if it's a community game
+                suggestion = GameSuggestion.query.get(game_id)
+                if suggestion and suggestion.status == 'approved':
+                    # For community games, no purchase record needed, just add to user games
+                    user_game = UserGame(username=session["username"], game_id=0, condition='new')  # game_id=0 for community
+                    user_game.game_title = suggestion.title  # Add custom attribute
+                    user_game.game_platform = suggestion.platform
+                    user_game.game_genre = suggestion.genre
+                    db.session.add(user_game)
+                    db.session.commit()
+                    flash("Community game added to your library!", "success")
+                else:
+                    flash("Game not found.", "error")
         except Exception as e:
             db.session.rollback()
             flash("Error purchasing game.", "error")
@@ -536,6 +630,60 @@ def buy_used(user_game_id):
             db.session.rollback()
             flash("Error purchasing used game.", "error")
     return redirect(url_for("marketplace"))
+
+# ---------- CUSTOMER: SUGGEST GAME ----------
+@app.route("/suggest_game", methods=["GET", "POST"])
+def suggest_game():
+    if "username" not in session or session["role"] != "customer":
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        title = request.form["title"].strip()
+        platform = request.form["platform"].strip()
+        genre = request.form.get("genre", "Action").strip()
+        description = request.form.get("description", "").strip()
+
+        # Validate inputs
+        if not title:
+            flash("Game title cannot be empty.", "error")
+            return render_template("suggest_game.html")
+        if len(title) > 100:
+            flash("Game title must be 100 characters or less.", "error")
+            return render_template("suggest_game.html")
+        if not platform:
+            flash("Platform cannot be empty.", "error")
+            return render_template("suggest_game.html")
+        if len(platform) > 50:
+            flash("Platform must be 50 characters or less.", "error")
+            return render_template("suggest_game.html")
+        if not genre:
+            flash("Genre cannot be empty.", "error")
+            return render_template("suggest_game.html")
+
+        # Check if suggestion already exists
+        existing_suggestion = GameSuggestion.query.filter_by(title=title, platform=platform).first()
+        if existing_suggestion:
+            flash("A suggestion for this game already exists.", "error")
+            return render_template("suggest_game.html")
+
+        try:
+            suggestion = GameSuggestion(
+                title=title,
+                platform=platform,
+                genre=genre,
+                description=description,
+                suggested_by=session["username"],
+                status='pending'
+            )
+            db.session.add(suggestion)
+            db.session.commit()
+            flash("Game suggestion submitted successfully!", "success")
+            return redirect(url_for("customer"))
+        except Exception as e:
+            db.session.rollback()
+            flash("Error submitting suggestion.", "error")
+
+    return render_template("suggest_game.html")
 
 # ---------- CUSTOMER: RATE GAME ----------
 @app.route("/rate_game/<int:game_id>", methods=["GET", "POST"])

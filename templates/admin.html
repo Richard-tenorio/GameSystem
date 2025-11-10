@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <title>Admin - GameHub Management</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
         .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
@@ -12,7 +13,15 @@
     </style>
 </head>
 <body>
-    <h1>Welcome Admin, {{ session['username'] }}</h1>
+    <header class="header-nav">
+        <div class="nav-links">
+            <a href="{{ url_for('marketplace') }}"><i class="fas fa-store icon"></i>Marketplace</a>
+            <a href="{{ url_for('profile') }}"><i class="fas fa-user icon"></i>Profile</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+        </div>
+    </header>
+    <main class="main-content">
+        <h1><i class="fas fa-tachometer-alt icon"></i>Welcome Admin, {{ session['username'] }}</h1>
 
     {% set messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -21,8 +30,10 @@
         {% endfor %}
     {% endif %}
 
-    <h2>Dashboard Statistics</h2>
-    <div class="stats">
+    <section class="section">
+        <div class="card">
+            <h2><i class="fas fa-chart-bar icon"></i>Dashboard Statistics</h2>
+            <div class="stats">
         <div class="stat-item">
             <h3>Total Games</h3>
             <p>{{ total_games }}</p>
@@ -39,10 +50,33 @@
             <h3>Active Users</h3>
             <p>{{ active_users }}</p>
         </div>
-    </div>
+            </div>
+        </div>
+    </section>
 
-    <h2>Add New Game</h2>
-    <form method="post" action="{{ url_for('add_game') }}">
+    <section class="section">
+        <div class="card">
+            <h2><i class="fas fa-users icon"></i>User List</h2>
+            <table>
+        <tr>
+            <th>Username</th>
+            <th>Role</th>
+        </tr>
+        {% for user in users %}
+        <tr>
+            <td>{{ user.username }}</td>
+            <td>{{ user.role }}</td>
+        </tr>
+        {% endfor %}
+            </table>
+            <p><a href="{{ url_for('user_management') }}">Manage Users</a> | <a href="{{ url_for('manage_suggestions') }}">Manage Suggestions</a></p>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="card">
+            <h2><i class="fas fa-plus-circle icon"></i>Add New Game</h2>
+            <form method="post" action="{{ url_for('add_game') }}">
         <input type="text" name="title" placeholder="Game Title" value="{{ request.form.title or '' }}">
         {% if errors.title %}<div class="error-text">{{ errors.title }}</div>{% endif %}
 
@@ -65,11 +99,15 @@
 
         <label><input type="checkbox" name="confirm" required> Confirm add game</label>
 
-        <button type="submit">Add Game</button>
-    </form>
+                <button type="submit"><i class="fas fa-plus icon"></i>Add Game</button>
+            </form>
+        </div>
+    </section>
 
-    <h2>Game Inventory List</h2>
-    <table style="text-align: center;">
+    <section class="section">
+        <div class="card">
+            <h2><i class="fas fa-boxes icon"></i>Game Inventory List</h2>
+            <table>
         <tr>
             <th>Title</th>
             <th>Platform</th>
@@ -97,11 +135,11 @@
             </td>
         </tr>
         {% endfor %}
-    </table>
+            </table>
 
-    <!-- Pagination -->
-    {% if total_pages > 1 %}
-    <div class="pagination">
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <div class="pagination">
         {% if page > 1 %}
         <a href="{{ url_for('admin', page=page-1) }}">&laquo; Previous</a>
         {% endif %}
@@ -117,9 +155,10 @@
         {% if page < total_pages %}
         <a href="{{ url_for('admin', page=page+1) }}">Next &raquo;</a>
         {% endif %}
-    </div>
-    {% endif %}
-
-    <a href="{{ url_for('user_management') }}">User Management</a> | <a href="{{ url_for('logout') }}">Logout</a>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+    </main>
 </body>
 </html>

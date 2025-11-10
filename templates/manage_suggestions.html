@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Manage Suggestions</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
+        .status-pending { color: orange; }
+        .status-approved { color: green; }
+        .status-rejected { color: red; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>Manage Game Suggestions</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if suggestions %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Platform</th>
+                        <th>Genre</th>
+                        <th>Description</th>
+                        <th>Suggested By</th>
+                        <th>Date Suggested</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for suggestion in suggestions %}
+                        <tr>
+                            <td>{{ suggestion.title }}</td>
+                            <td>{{ suggestion.platform }}</td>
+                            <td>{{ suggestion.genre }}</td>
+                            <td>{{ suggestion.description or 'N/A' }}</td>
+                            <td>{{ suggestion.suggested_by }}</td>
+                            <td>{{ suggestion.date_suggested.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td class="status-{{ suggestion.status }}">{{ suggestion.status.title() }}</td>
+                            <td>
+                                {% if suggestion.status == 'pending' %}
+                                    <a href="{{ url_for('approve_suggestion', suggestion_id=suggestion.id) }}">Approve</a> |
+                                    <a href="{{ url_for('reject_suggestion', suggestion_id=suggestion.id) }}">Reject</a>
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No suggestions found.</p>
+        {% endif %}
+
+        <p><a href="{{ url_for('admin') }}">← Back to Dashboard</a></p>
+    </div>
+</body>
+</html>

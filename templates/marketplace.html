@@ -5,46 +5,158 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Marketplace - GameHub</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .header-nav {
+            background: rgba(20, 20, 20, 0.95);
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+        .search-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .search-form input, .search-form select {
+            padding: 8px;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            background-color: rgba(25, 25, 25, 0.9);
+            color: #f0f0f0;
+        }
+        .search-form button {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
+            color: #f0f0f0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+        .nav-links a {
+            color: #bdbdbd;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        .nav-links a:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+        }
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .section {
+            margin-bottom: 40px;
+        }
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .game-card {
+            background: rgba(35, 35, 35, 0.9);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-align: center;
+        }
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        }
+        .game-card h3 {
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+        .game-card p {
+            margin: 5px 0;
+            color: #e0e0e0;
+        }
+        .game-card .btn {
+            margin-top: 15px;
+        }
+        @media (max-width: 768px) {
+            .header-nav {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .search-form {
+                flex-wrap: wrap;
+            }
+            .nav-links {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .games-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>GameHub - Marketplace</h1>
-            <nav>
-                <a href="{{ url_for('customer') }}">Browse New Games</a>
-                <a href="{{ url_for('marketplace') }}">Marketplace</a>
-                <a href="{{ url_for('profile') }}">Profile</a>
-                <a href="{{ url_for('logout') }}">Logout</a>
-            </nav>
-        </header>
+    <header class="header-nav">
+        <div class="logo">GameHub</div>
+        <form method="GET" class="search-form" action="{{ url_for('marketplace') }}">
+            <input type="text" name="search" placeholder="Search games..." value="{{ search }}">
+            <select name="platform">
+                <option value="">All Platforms</option>
+                {% for platform in platforms %}
+                    <option value="{{ platform }}" {% if platform_filter == platform %}selected{% endif %}>{{ platform }}</option>
+                {% endfor %}
+            </select>
+            <select name="genre">
+                <option value="">All Genres</option>
+                <option value="Action" {% if genre_filter == 'Action' %}selected{% endif %}>Action</option>
+                <option value="Adventure" {% if genre_filter == 'Adventure' %}selected{% endif %}>Adventure</option>
+                <option value="RPG" {% if genre_filter == 'RPG' %}selected{% endif %}>RPG</option>
+                <option value="Strategy" {% if genre_filter == 'Strategy' %}selected{% endif %}>Strategy</option>
+                <option value="Sports" {% if genre_filter == 'Sports' %}selected{% endif %}>Sports</option>
+                <option value="Racing" {% if genre_filter == 'Racing' %}selected{% endif %}>Racing</option>
+                <option value="Puzzle" {% if genre_filter == 'Puzzle' %}selected{% endif %}>Puzzle</option>
+                <option value="Simulation" {% if genre_filter == 'Simulation' %}selected{% endif %}>Simulation</option>
+            </select>
+            <button type="submit">Filter</button>
+        </form>
+        <div class="nav-links">
+            <a href="{{ url_for('customer') }}"><i class="fas fa-gamepad icon"></i>Browse New</a>
+            <a href="{{ url_for('profile') }}"><i class="fas fa-user icon"></i>Profile</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+        </div>
+    </header>
+    <main class="main-content">
+        <h1><i class="fas fa-store icon"></i>Marketplace - Used Games</h1>
 
-        <main>
-            <h2>Used Games for Sale</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-            <!-- Search and Filters -->
-            <form method="GET" class="filters">
-                <input type="text" name="search" placeholder="Search games..." value="{{ search }}">
-                <select name="platform">
-                    <option value="">All Platforms</option>
-                    {% for platform in platforms %}
-                        <option value="{{ platform }}" {% if platform_filter == platform %}selected{% endif %}>{{ platform }}</option>
-                    {% endfor %}
-                </select>
-                <select name="genre">
-                    <option value="">All Genres</option>
-                    <option value="Action" {% if genre_filter == 'Action' %}selected{% endif %}>Action</option>
-                    <option value="Adventure" {% if genre_filter == 'Adventure' %}selected{% endif %}>Adventure</option>
-                    <option value="RPG" {% if genre_filter == 'RPG' %}selected{% endif %}>RPG</option>
-                    <option value="Strategy" {% if genre_filter == 'Strategy' %}selected{% endif %}>Strategy</option>
-                    <option value="Sports" {% if genre_filter == 'Sports' %}selected{% endif %}>Sports</option>
-                    <option value="Racing" {% if genre_filter == 'Racing' %}selected{% endif %}>Racing</option>
-                    <option value="Puzzle" {% if genre_filter == 'Puzzle' %}selected{% endif %}>Puzzle</option>
-                    <option value="Simulation" {% if genre_filter == 'Simulation' %}selected{% endif %}>Simulation</option>
-                </select>
-                <button type="submit">Filter</button>
-            </form>
-
-            <!-- Games Grid -->
+        <section class="section">
             <div class="games-grid">
                 {% for user_game in user_games %}
                     <div class="game-card">
@@ -58,6 +170,10 @@
                     </div>
                 {% endfor %}
             </div>
+
+            {% if not user_games %}
+                <p>No used games available for sale.</p>
+            {% endif %}
 
             <!-- Pagination -->
             {% if total_pages > 1 %}
@@ -79,17 +195,7 @@
                     {% endif %}
                 </div>
             {% endif %}
-
-            {% if not user_games %}
-                <p>No used games available for sale.</p>
-            {% endif %}
-        </main>
-
-        <footer>
-            <p>&copy; 2023 GameHub. All rights reserved.</p>
-        </footer>
-    </div>
-
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+        </section>
+    </main>
 </body>
 </html>

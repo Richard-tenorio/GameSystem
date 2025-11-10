@@ -4,41 +4,48 @@
     <meta charset="utf-8" />
     <title>Rate & Review Game - GameHub</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
 </head>
 <body>
-    <h1>Rate & Review: {{ game.title }}</h1>
+    <div class="box">
+        <h1>Rate & Review: {{ game.title }}</h1>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="flash {{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-    <h2>Game Details</h2>
-    <p><strong>Title:</strong> {{ game.title }}</p>
-    <p><strong>Platform:</strong> {{ game.platform }}</p>
-    <p><strong>Genre:</strong> {{ game.genre }}</p>
+        <h2>Game Details</h2>
+        <p><strong>Title:</strong> {{ game.title }}</p>
+        <p><strong>Platform:</strong> {{ game.platform }}</p>
+        <p><strong>Genre:</strong> {{ game.genre }}</p>
 
-    <h2>Your Rating & Review</h2>
-    <form method="POST">
-        <label for="rating">Rating (1-5 stars):</label><br>
-        <select name="rating" id="rating" required>
-            <option value="">Select rating</option>
-            <option value="1">1 ★</option>
-            <option value="2">2 ★★</option>
-            <option value="3">3 ★★★</option>
-            <option value="4">4 ★★★★</option>
-            <option value="5">5 ★★★★★</option>
-        </select><br><br>
+        <h2>Your Rating & Review</h2>
+        <form method="POST">
+            <label for="rating">Rating (1-5 stars):</label><br>
+            <select name="rating" id="rating" required>
+                <option value="">Select rating</option>
+                <option value="1">1 ★</option>
+                <option value="2">2 ★★</option>
+                <option value="3">3 ★★★</option>
+                <option value="4">4 ★★★★</option>
+                <option value="5">5 ★★★★★</option>
+            </select><br><br>
 
-        <label for="review">Review (optional):</label><br>
-        <textarea name="review" id="review" rows="4" cols="50" placeholder="Share your thoughts about this game..."></textarea><br><br>
+            <label for="review">Review (optional):</label><br>
+            <textarea name="review" id="review" rows="4" cols="50" placeholder="Share your thoughts about this game..."></textarea><br><br>
 
-        <button type="submit">Submit Rating</button>
-    </form>
+            <button type="submit">Submit Rating</button>
+        </form>
 
-    <a href="{{ url_for('customer') }}">Back to Games</a> | <a href="{{ url_for('logout') }}">Logout</a>
+        <p><a href="{{ url_for('customer') }}">Back to Games</a> | <a href="{{ url_for('logout') }}">Logout</a></p>
+    </div>
 </body>
 </html>

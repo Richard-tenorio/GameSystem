@@ -5,42 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sell Game - GameHub</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>GameHub - Sell Game</h1>
-            <nav>
-                <a href="{{ url_for('customer') }}">Browse New Games</a>
-                <a href="{{ url_for('marketplace') }}">Marketplace</a>
-                <a href="{{ url_for('profile') }}">Profile</a>
-                <a href="{{ url_for('logout') }}">Logout</a>
-            </nav>
-        </header>
+    <div class="box">
+        <h1>GameHub - Sell Game</h1>
 
-        <main>
-            <h2>List Game for Sale</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-            <div class="game-details">
-                <h3>{{ game.title }}</h3>
-                <p><strong>Platform:</strong> {{ game.platform }}</p>
-                <p><strong>Genre:</strong> {{ game.genre }}</p>
-                <p><strong>Condition:</strong> {{ user_game.condition }}</p>
-                <p><strong>Purchase Date:</strong> {{ user_game.purchase_date.strftime('%Y-%m-%d') }}</p>
-            </div>
+        <h2>List Game for Sale</h2>
 
-            <form method="POST" class="sell-form">
-                <label for="sale_price">Sale Price ($):</label>
-                <input type="number" id="sale_price" name="sale_price" step="0.01" min="0.01" required>
-                <button type="submit" class="btn">List for Sale</button>
-            </form>
+        <div class="game-details">
+            <h3>{{ game.title }}</h3>
+            <p><strong>Platform:</strong> {{ game.platform }}</p>
+            <p><strong>Genre:</strong> {{ game.genre }}</p>
+            <p><strong>Condition:</strong> {{ user_game.condition }}</p>
+            <p><strong>Purchase Date:</strong> {{ user_game.purchase_date.strftime('%Y-%m-%d') }}</p>
+        </div>
 
-            <a href="{{ url_for('profile') }}" class="btn secondary">Cancel</a>
-        </main>
+        <form method="POST" class="sell-form">
+            <label for="sale_price">Sale Price ($):</label><br>
+            <input type="number" id="sale_price" name="sale_price" step="0.01" min="0.01" required><br>
+            <button type="submit" class="btn">List for Sale</button>
+        </form>
 
-        <footer>
-            <p>&copy; 2023 GameHub. All rights reserved.</p>
-        </footer>
+        <p><a href="{{ url_for('profile') }}" class="btn secondary">Cancel</a></p>
+        <p><a href="{{ url_for('customer') }}">Browse New Games</a> | <a href="{{ url_for('marketplace') }}">Marketplace</a> | <a href="{{ url_for('profile') }}">Profile</a> | <a href="{{ url_for('logout') }}">Logout</a></p>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>

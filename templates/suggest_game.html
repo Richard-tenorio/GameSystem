@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Suggest Game</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>Suggest a Game</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('suggest_game') }}">
+            <label for="title">Title:</label><br>
+            <input type="text" id="title" name="title" required maxlength="100"><br><br>
+            <label for="platform">Platform:</label><br>
+            <input type="text" id="platform" name="platform" required maxlength="50"><br><br>
+            <label for="genre">Genre:</label><br>
+            <select id="genre" name="genre">
+                <option value="Action">Action</option>
+                <option value="Adventure">Adventure</option>
+                <option value="RPG">RPG</option>
+                <option value="Strategy">Strategy</option>
+                <option value="Simulation">Simulation</option>
+                <option value="Sports">Sports</option>
+                <option value="Racing">Racing</option>
+                <option value="Puzzle">Puzzle</option>
+                <option value="Horror">Horror</option>
+                <option value="Other">Other</option>
+            </select><br><br>
+            <label for="description">Description (optional):</label><br>
+            <textarea id="description" name="description" rows="4" cols="50"></textarea><br><br>
+            <input type="submit" value="Submit Suggestion">
+        </form>
+        <p><a href="{{ url_for('customer') }}">← Back to Dashboard</a></p>
+    </div>
+</body>
+</html>

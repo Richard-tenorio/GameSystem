@@ -4,8 +4,27 @@
     <meta charset="utf-8" />
     <title>Customer - GameHub</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
+    <header class="header-nav">
+        <div class="logo">GameHub</div>
+        <form method="get" action="{{ url_for('customer') }}" class="search-form">
+            <input type="text" name="search" placeholder="Search games..." value="{{ request.args.get('search', '') }}">
+            <select name="genre">
+                <option value="">All Genres</option>
+                {% for genre in genres %}
+                    <option value="{{ genre }}" {% if request.args.get('genre') == genre %}selected{% endif %}>{{ genre }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Search</button>
+        </form>
+        <div class="nav-links">
+            <a href="{{ url_for('marketplace') }}"><i class="fas fa-store icon"></i>Marketplace</a>
+            <a href="{{ url_for('profile') }}"><i class="fas fa-user icon"></i>Profile</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+        </div>
+    </header>
     <h1>Welcome Customer, {{ session['username'] }}</h1>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -18,31 +37,7 @@
 
     <h2>Available Games</h2>
 
-    <!-- Search and Filter Form -->
-    <form method="GET" style="margin-bottom: 20px;">
-        <input type="text" name="search" placeholder="Search by title..." value="{{ search }}">
-        <select name="platform">
-            <option value="">All Platforms</option>
-            {% for platform in platforms %}
-            <option value="{{ platform }}" {% if platform_filter == platform %}selected{% endif %}>{{ platform }}</option>
-            {% endfor %}
-        </select>
-        <select name="genre">
-            <option value="">All Genres</option>
-            <option value="Action" {% if genre_filter == 'Action' %}selected{% endif %}>Action</option>
-            <option value="Adventure" {% if genre_filter == 'Adventure' %}selected{% endif %}>Adventure</option>
-            <option value="RPG" {% if genre_filter == 'RPG' %}selected{% endif %}>RPG</option>
-            <option value="Strategy" {% if genre_filter == 'Strategy' %}selected{% endif %}>Strategy</option>
-            <option value="Sports" {% if genre_filter == 'Sports' %}selected{% endif %}>Sports</option>
-            <option value="Racing" {% if genre_filter == 'Racing' %}selected{% endif %}>Racing</option>
-            <option value="Simulation" {% if genre_filter == 'Simulation' %}selected{% endif %}>Simulation</option>
-            <option value="Puzzle" {% if genre_filter == 'Puzzle' %}selected{% endif %}>Puzzle</option>
-            <option value="Horror" {% if genre_filter == 'Horror' %}selected{% endif %}>Horror</option>
-            <option value="Fighting" {% if genre_filter == 'Fighting' %}selected{% endif %}>Fighting</option>
-        </select>
-        <button type="submit">Search/Filter</button>
-        <a href="{{ url_for('customer') }}">Clear Filters</a>
-    </form>
+    <p><a href="{{ url_for('suggest_game') }}">Suggest a Game</a></p>
 
     <table>
         <tr>
@@ -52,7 +47,6 @@
             <th>Price</th>
             <th>Action</th>
         </tr>
-
         {% for game in games %}
         <tr>
             <td>{{ game.title }}</td>
@@ -70,6 +64,7 @@
             </td>
         </tr>
         {% endfor %}
+    </table>
 
     <!-- Pagination -->
     {% if total_pages > 1 %}
@@ -91,7 +86,5 @@
         {% endif %}
     </div>
     {% endif %}
-
-    <a href="{{ url_for('marketplace') }}">Marketplace</a> | <a href="{{ url_for('profile') }}">Profile</a> | <a href="{{ url_for('logout') }}">Logout</a>
 </body>
 </html>

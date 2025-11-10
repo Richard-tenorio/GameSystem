@@ -4,6 +4,11 @@
     <meta charset="utf-8" />
     <title>Login - GameHub</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
 </head>
 <body>
     <div class="box">
@@ -18,8 +23,10 @@
         {% endwith %}
 
         <form method="POST">
-            <input type="text" name="username" placeholder="Username" required><br>
-            <input type="password" name="password" placeholder="Password" required><br>
+            <label for="username">Username:</label><br>
+            <input type="text" id="username" name="username" placeholder="Enter your username" required><br>
+            <label for="password">Password:</label><br>
+            <input type="password" id="password" name="password" placeholder="Enter your password" required><br>
             <button type="submit">Login</button>
         </form>
 
