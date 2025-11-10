@@ -134,8 +134,6 @@ def admin():
 
         # Check for pending suggestions and notify admin
         pending_count = GameSuggestion.query.filter_by(status='pending').count()
-        if pending_count > 0:
-            flash(f"There are {pending_count} pending game suggestions to review.", "info")
 
     except Exception as e:
         flash("Error loading dashboard.", "error")
@@ -144,7 +142,7 @@ def admin():
         total_games = sold_games = total_users = active_users = total_pages = 0
         page = 1
 
-    return render_template("admin.html", games=games, users=users, total_games=total_games, sold_games=sold_games, total_users=total_users, active_users=active_users, page=page, total_pages=total_pages, errors={})
+    return render_template("admin.html", games=games, users=users, total_games=total_games, sold_games=sold_games, total_users=total_users, active_users=active_users, page=page, total_pages=total_pages, errors={}, pending_count=pending_count)
 
 # ---------- ADMIN: ADD GAME ----------
 @app.route("/add_game", methods=["POST"])
