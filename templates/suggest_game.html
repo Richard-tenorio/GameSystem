@@ -22,7 +22,7 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST" action="{{ url_for('suggest_game') }}">
+        <form method="POST" action="{{ url_for('suggest_game') }}" enctype="multipart/form-data">
             <label for="title">Title:</label><br>
             <input type="text" id="title" name="title" required maxlength="100"><br><br>
             <label for="platform">Platform:</label><br>
@@ -40,6 +40,8 @@
                 <option value="Horror">Horror</option>
                 <option value="Other">Other</option>
             </select><br><br>
+            <label for="image">Game Cover Image:</label><br>
+            <input type="file" id="image" name="image" accept="image/*" required><br><br>
             <label for="description">Description (optional):</label><br>
             <textarea id="description" name="description" rows="4" cols="50"></textarea><br><br>
             <input type="submit" value="Submit Suggestion">

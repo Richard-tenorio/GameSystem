@@ -93,8 +93,8 @@
     <h2>Community Games</h2>
     <div class="games-grid">
         {% for suggestion in approved_suggestions %}
-        <div class="game-card" onclick="openModal('{{ suggestion.title }}', '{{ suggestion.platform }}', '{{ suggestion.genre or 'N/A' }}', 'Community Game', 'Free', 'https://via.placeholder.com/200x300?text=Community+Game', '{{ url_for('buy', game_id=suggestion.id) }}', '', 'true')">
-            <img src="https://via.placeholder.com/200x300?text=Community+Game" alt="{{ suggestion.title }}" class="game-image">
+        <div class="game-card" onclick="openModal('{{ suggestion.title }}', '{{ suggestion.platform }}', '{{ suggestion.genre or 'N/A' }}', 'Community Game', 'Free', '{% if suggestion.image %}static/uploads/{{ suggestion.image }}{% else %}https://via.placeholder.com/200x300?text=Community+Game{% endif %}', '{{ url_for('buy', game_id=suggestion.id) }}', '', 'true')">
+            <img src="{% if suggestion.image %}static/uploads/{{ suggestion.image }}{% else %}https://via.placeholder.com/200x300?text=Community+Game{% endif %}" alt="{{ suggestion.title }}" class="game-image">
             <div class="game-info">
                 <h3>{{ suggestion.title }}</h3>
                 <p>{{ suggestion.platform }}</p>

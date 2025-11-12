@@ -30,15 +30,21 @@
             {% endif %}
         {% endwith %}
 
-        <h2>Change Password</h2>
-        <form method="POST" onsubmit="return validatePassword()">
-            <label for="password">New Password:</label><br>
-            <input type="password" id="password" name="password" placeholder="Enter new password" required><br>
-            <div id="password-error" style="color: red; display: none;"></div>
-            <button type="submit">Update Password</button>
-        </form>
+        <section class="section">
+            <div class="card">
+                <h2><i class="fas fa-key icon"></i>Account Settings</h2>
+                <form method="POST" onsubmit="return validatePassword()">
+                    <label for="password">New Password:</label><br>
+                    <input type="password" id="password" name="password" placeholder="Enter new password" required><br>
+                    <div id="password-error" style="color: red; display: none;"></div>
+                    <button type="submit">Update Password</button>
+                </form>
+            </div>
+        </section>
 
-        <h2>Purchase History</h2>
+        <section class="section">
+            <div class="card">
+                <h2><i class="fas fa-shopping-cart icon"></i>Purchase History</h2>
         {% if purchases %}
         <table>
             <thead>
@@ -71,8 +77,12 @@
         {% endif %}
 
         <p><a href="{{ url_for('library') }}">View My Game Library</a></p>
+            </div>
+        </section>
 
-        <h2>My Reviews & Ratings</h2>
+        <section class="section">
+            <div class="card">
+                <h2><i class="fas fa-star icon"></i>My Reviews & Ratings</h2>
         {% if ratings %}
         <table>
             <thead>
@@ -107,6 +117,8 @@
         {% else %}
         <p>You haven't rated any games yet.</p>
         {% endif %}
+            </div>
+        </section>
 
     </main>
 </body>

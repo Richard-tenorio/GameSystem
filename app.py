@@ -405,6 +405,13 @@ def customer():
 
         approved_suggestions = community_query.order_by(GameSuggestion.date_suggested.desc()).all()
 
+        # Load image filenames for suggestions
+        for suggestion in approved_suggestions:
+            image_file = os.path.join('static', 'uploads', f'suggestion_{suggestion.id}.txt')
+            if os.path.exists(image_file):
+                with open(image_file, 'r') as f:
+                    suggestion.image = f.read().strip()
+
         # Combine games for pagination (simplified)
         total_games_count = official_query.count()
         total_pages = (total_games_count + per_page - 1) // per_page
@@ -691,6 +698,25 @@ def suggest_game():
             flash("Genre cannot be empty.", "error")
             return render_template("suggest_game.html")
 
+        # Handle image upload
+        image_filename = None
+        if 'image' in request.files:
+            image_file = request.files['image']
+            if image_file and image_file.filename != '':
+                # Validate file type
+                allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+                if '.' in image_file.filename and image_file.filename.rsplit('.', 1)[1].lower() in allowed_extensions:
+                    # Generate unique filename
+                    import uuid
+                    filename = str(uuid.uuid4()) + '.' + image_file.filename.rsplit('.', 1)[1].lower()
+                    image_path = os.path.join('static', 'uploads', filename)
+                    os.makedirs(os.path.dirname(image_path), exist_ok=True)
+                    image_file.save(image_path)
+                    image_filename = filename
+                else:
+                    flash("Invalid image file type. Please upload PNG, JPG, JPEG, GIF, or WebP.", "error")
+                    return render_template("suggest_game.html")
+
         # Check if suggestion already exists
         existing_suggestion = GameSuggestion.query.filter_by(title=title, platform=platform).first()
         if existing_suggestion:
@@ -708,6 +734,21 @@ def suggest_game():
             )
             db.session.add(suggestion)
             db.session.commit()
+
+            # Store image filename in a simple way - we'll use a global variable approach
+            # or just rely on the file being saved with the suggestion ID
+            if image_filename:
+                # Rename the uploaded file to include suggestion ID for easy retrieval
+                import uuid
+                new_filename = f'suggestion_{suggestion.id}_{str(uuid.uuid4())[:8]}.{image_filename.split(".")[-1]}'
+                old_path = os.path.join('static', 'uploads', image_filename)
+                new_path = os.path.join('static', 'uploads', new_filename)
+                if os.path.exists(old_path):
+                    os.rename(old_path, new_path)
+                    # Store the filename in a simple text file for retrieval
+                    with open(os.path.join('static', 'uploads', f'suggestion_{suggestion.id}.txt'), 'w') as f:
+                        f.write(new_filename)
+
             flash("Game suggestion submitted successfully!", "success")
             return redirect(url_for("customer"))
         except Exception as e:
