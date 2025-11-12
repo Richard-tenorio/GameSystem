@@ -20,7 +20,7 @@
             <button type="submit">Search</button>
         </form>
         <div class="nav-links">
-            <a href="{{ url_for('marketplace') }}"><i class="fas fa-store icon"></i>Marketplace</a>
+            <a href="{{ url_for('library') }}"><i class="fas fa-book icon"></i>Library</a>
             <a href="{{ url_for('profile') }}"><i class="fas fa-user icon"></i>Profile</a>
             <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
         </div>
@@ -35,36 +35,20 @@
         {% endif %}
     {% endwith %}
 
-    <h2>Available Games</h2>
+    <h2>Official Games</h2>
 
-    <p><a href="{{ url_for('suggest_game') }}">Suggest a Game</a></p>
-
-    <table>
-        <tr>
-            <th>Title</th>
-            <th>Platform</th>
-            <th>Quantity</th>
-            <th>Price</th>
-            <th>Action</th>
-        </tr>
+    <div class="games-grid">
         {% for game in games %}
-        <tr>
-            <td>{{ game.title }}</td>
-            <td>{{ game.platform }}</td>
-            <td>{{ game.quantity }}</td>
-            <td>${{ game.price }}</td>
-            <td>
-                {% if game.quantity > 0 %}
-                    <a href="{{ url_for('buy', game_id=game.id) }}" class="buy-link">Buy New</a>
-                {% else %}
-                    Out of stock
-                {% endif %}
-
-                <a href="{{ url_for('rate_game', game_id=game.id) }}" class="rate-link">Rate & Review</a>
-            </td>
-        </tr>
+        <div class="game-card" onclick="openModal('{{ game.title }}', '{{ game.platform }}', '{{ game.genre or 'N/A' }}', '{{ game.quantity }}', '{{ game.price }}', '{{ game.image }}', '{{ url_for('buy', game_id=game.id) }}', '{{ url_for('rate_game', game_id=game.id) }}', '{{ game.quantity > 0 }}')">
+            <img src="{{ game.image }}" alt="{{ game.title }}" class="game-image">
+            <div class="game-info">
+                <h3>{{ game.title }}</h3>
+                <p>{{ game.platform }}</p>
+                <p class="price">${{ game.price }}</p>
+            </div>
+        </div>
         {% endfor %}
-    </table>
+    </div>
 
     <!-- Pagination -->
     {% if total_pages > 1 %}
@@ -86,5 +70,82 @@
         {% endif %}
     </div>
     {% endif %}
+
+    <h2>Used Games for Sale</h2>
+    <div class="games-grid">
+        {% for user_game in user_games %}
+        <div class="game-card" onclick="openModal('{{ user_game.game.title }}', '{{ user_game.game.platform }}', '{{ user_game.game.genre }}', 'Used ({{ user_game.condition }})', '{{ "%.2f"|format(user_game.sale_price) }}', '{{ user_game.game.image }}', '{{ url_for('buy_used', user_game_id=user_game.id) }}', '', 'true')">
+            <img src="{{ user_game.game.image }}" alt="{{ user_game.game.title }}" class="game-image">
+            <div class="game-info">
+                <h3>{{ user_game.game.title }}</h3>
+                <p>{{ user_game.game.platform }}</p>
+                <p class="price">${{ "%.2f"|format(user_game.sale_price) }}</p>
+                <p class="condition">Used ({{ user_game.condition }})</p>
+                <p class="seller">Seller: {{ user_game.username }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% if not user_games %}
+        <p>No used games available for sale.</p>
+    {% endif %}
+
+    <h2>Community Games</h2>
+    <div class="games-grid">
+        {% for suggestion in approved_suggestions %}
+        <div class="game-card" onclick="openModal('{{ suggestion.title }}', '{{ suggestion.platform }}', '{{ suggestion.genre or 'N/A' }}', 'Community Game', 'Free', 'https://via.placeholder.com/200x300?text=Community+Game', '{{ url_for('buy', game_id=suggestion.id) }}', '', 'true')">
+            <img src="https://via.placeholder.com/200x300?text=Community+Game" alt="{{ suggestion.title }}" class="game-image">
+            <div class="game-info">
+                <h3>{{ suggestion.title }}</h3>
+                <p>{{ suggestion.platform }}</p>
+                <p class="price">Free</p>
+                <p class="suggested-by">Suggested by: {{ suggestion.suggested_by }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% if not approved_suggestions %}
+        <p>No community games available.</p>
+    {% endif %}
+
+    <!-- Modal for game details -->
+    <div id="gameModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div class="modal-body">
+                <img id="modalImage" src="" alt="Game Image" class="modal-image">
+                <div class="modal-details">
+                    <h2 id="modalTitle"></h2>
+                    <p><strong>Platform:</strong> <span id="modalPlatform"></span></p>
+                    <p><strong>Genre:</strong> <span id="modalGenre"></span></p>
+                    <p><strong>Status:</strong> <span id="modalStatus"></span></p>
+                    <p><strong>Price:</strong> <span id="modalPrice"></span></p>
+                    <div class="modal-description">
+                        <h3>Installation Instructions</h3>
+                        <p>This game requires installation. Please follow these steps:</p>
+                        <ol>
+                            <li>Download the game installer from the official source.</li>
+                            <li>Run the installer as administrator.</li>
+                            <li>Follow the on-screen instructions to complete installation.</li>
+                            <li>Launch the game from your desktop or start menu.</li>
+                        </ol>
+                        <p><em>Note: System requirements may vary. Ensure your system meets the minimum requirements before installation.</em></p>
+                    </div>
+                    <div class="modal-actions">
+                        <a id="modalBuyLink" href="" class="btn buy-btn">Buy Now</a>
+                        <a id="modalRateLink" href="" class="btn rate-btn">Rate & Review</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="suggest-section">
+        <h2>Want to Add a Game?</h2>
+        <p>Don't see the game you're looking for? Suggest it to the community!</p>
+        <a href="{{ url_for('suggest_game') }}" class="btn">Suggest a Game</a>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

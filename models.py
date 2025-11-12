@@ -9,6 +9,8 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(20), default='customer')
+    reset_token = db.Column(db.String(100), nullable=True)
+    reset_expires = db.Column(db.DateTime, nullable=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -23,6 +25,7 @@ class Game(db.Model):
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False, default=0.0)
     genre = db.Column(db.String(50), nullable=True)
+    image = db.Column(db.String(255), nullable=True, default='https://via.placeholder.com/200x300?text=No+Image')
 
 class Purchase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -32,15 +35,21 @@ class Purchase(db.Model):
     condition = db.Column(db.String(20), nullable=False, default='new')  # 'new' or 'used'
     price_paid = db.Column(db.Float, nullable=False)
     seller_username = db.Column(db.String(80), nullable=True)  # for used games
+    game = db.relationship('Game', backref='purchases')
 
 class UserGame(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
-    game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False)
+    game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=True)  # Allow null for community games
     condition = db.Column(db.String(20), nullable=False, default='new')
     purchase_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     listed_for_sale = db.Column(db.Boolean, nullable=False, default=False)
     sale_price = db.Column(db.Float, nullable=True)
+    # For community games
+    title = db.Column(db.String(100), nullable=True)
+    platform = db.Column(db.String(50), nullable=True)
+    genre = db.Column(db.String(50), nullable=True)
+    game = db.relationship('Game', backref='user_games')
 
 class Rating(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -49,6 +58,7 @@ class Rating(db.Model):
     rating = db.Column(db.Integer, nullable=False)
     review = db.Column(db.Text, nullable=True)
     date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    game = db.relationship('Game', backref='ratings')
 
 class GameSuggestion(db.Model):
     id = db.Column(db.Integer, primary_key=True)

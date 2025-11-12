@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
 import logging
+import secrets
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -71,7 +73,7 @@ def register():
         username = request.form["username"]
         password = request.form["password"]
         confirm_password = request.form["confirm_password"]
-        role = "customer"
+        role = "customer"  # Users can only register as customers
 
         # Check if passwords match
         if password != confirm_password:
@@ -372,8 +374,24 @@ def customer():
 
         official_games = official_query.order_by(Game.id).offset(offset).limit(per_page).all()
 
-        # Get community games (approved suggestions)
-        community_games = []
+        # Get used games for sale (only official games)
+        used_query = UserGame.query.filter_by(listed_for_sale=True).filter(UserGame.game_id.isnot(None)).join(Game)
+
+        if search:
+            used_query = used_query.filter(Game.title.ilike(f"%{search}%"))
+
+        if platform_filter:
+            used_query = used_query.filter(Game.platform == platform_filter)
+
+        if genre_filter:
+            used_query = used_query.filter(Game.genre == genre_filter)
+
+        user_games = used_query.order_by(UserGame.purchase_date).all()
+
+        # Get genres for filter dropdown
+        genres = [g[0] for g in db.session.query(Game.genre).distinct().all()]
+
+        # Get approved community games
         community_query = GameSuggestion.query.filter_by(status='approved')
 
         if search:
@@ -385,34 +403,23 @@ def customer():
         if genre_filter:
             community_query = community_query.filter_by(genre=genre_filter)
 
-        community_suggestions = community_query.order_by(GameSuggestion.date_suggested.desc()).offset(offset).limit(per_page).all()
-
-        # Convert suggestions to game-like objects for template
-        for suggestion in community_suggestions:
-            game_like = type('GameLike', (), {})()
-            game_like.id = suggestion.id
-            game_like.title = suggestion.title
-            game_like.platform = suggestion.platform
-            game_like.genre = suggestion.genre
-            game_like.quantity = 999  # Unlimited for community games
-            game_like.price = 0.0  # Free or set price
-            game_like.is_community = True
-            community_games.append(game_like)
+        approved_suggestions = community_query.order_by(GameSuggestion.date_suggested.desc()).all()
 
         # Combine games for pagination (simplified)
-        all_games = official_games + community_games
-        total_games_count = official_query.count() + community_query.count()
+        total_games_count = official_query.count()
         total_pages = (total_games_count + per_page - 1) // per_page
 
         # Get unique platforms for filter dropdown
         platforms = [p[0] for p in db.session.query(Game.platform).distinct().all()]
     except Exception as e:
-        flash("Error loading games.", "error")
-        all_games = []
+        flash(f"Error loading games: {str(e)}", "error")
+        official_games = []
+        user_games = []
+        approved_suggestions = []
         platforms = []
         total_pages = 0
         page = 1
-    return render_template("customer.html", games=all_games, platforms=platforms, search=search, platform_filter=platform_filter, genre_filter=genre_filter, page=page, total_pages=total_pages)
+    return render_template("customer.html", games=official_games, user_games=user_games, approved_suggestions=approved_suggestions, platforms=platforms, search=search, platform_filter=platform_filter, genre_filter=genre_filter, page=page, total_pages=total_pages)
 
 # ---------- CUSTOMER: BUY GAME ----------
 @app.route("/buy/<int:game_id>")
@@ -443,10 +450,8 @@ def buy(game_id):
                 suggestion = GameSuggestion.query.get(game_id)
                 if suggestion and suggestion.status == 'approved':
                     # For community games, no purchase record needed, just add to user games
-                    user_game = UserGame(username=session["username"], game_id=0, condition='new')  # game_id=0 for community
-                    user_game.game_title = suggestion.title  # Add custom attribute
-                    user_game.game_platform = suggestion.platform
-                    user_game.game_genre = suggestion.genre
+                    user_game = UserGame(username=session["username"], game_id=None, condition='new',
+                                       title=suggestion.title, platform=suggestion.platform, genre=suggestion.genre)
                     db.session.add(user_game)
                     db.session.commit()
                     flash("Community game added to your library!", "success")
@@ -469,20 +474,16 @@ def profile():
         is_valid, message = validate_password(new_password)
         if not is_valid:
             flash(message, "error")
-            # Get user's purchase history, owned games, and ratings to render template with error
+            # Get user's purchase history and ratings to render template with error
             try:
                 purchases = Purchase.query.filter_by(username=session["username"]).join(Game).order_by(Purchase.purchase_date.desc()).all()
             except Exception as e:
                 purchases = []
             try:
-                user_games = UserGame.query.filter_by(username=session["username"]).join(Game).order_by(UserGame.purchase_date.desc()).all()
-            except Exception as e:
-                user_games = []
-            try:
                 ratings = Rating.query.filter_by(username=session["username"]).join(Game).order_by(Rating.date.desc()).all()
             except Exception as e:
                 ratings = []
-            return render_template("profile.html", purchases=purchases, user_games=user_games, ratings=ratings)
+            return render_template("profile.html", purchases=purchases, ratings=ratings)
         try:
             user = User.query.filter_by(username=session["username"]).first()
             user.set_password(new_password)
@@ -498,19 +499,31 @@ def profile():
     except Exception as e:
         purchases = []
 
-    # Get user's owned games
-    try:
-        user_games = UserGame.query.filter_by(username=session["username"]).join(Game).order_by(UserGame.purchase_date.desc()).all()
-    except Exception as e:
-        user_games = []
-
     # Get user's ratings and reviews
     try:
         ratings = Rating.query.filter_by(username=session["username"]).join(Game).order_by(Rating.date.desc()).all()
     except Exception as e:
         ratings = []
 
-    return render_template("profile.html", purchases=purchases, user_games=user_games, ratings=ratings)
+    return render_template("profile.html", purchases=purchases, ratings=ratings)
+
+# ---------- CUSTOMER: LIBRARY ----------
+@app.route("/library")
+def library():
+    if "username" not in session:
+        return redirect(url_for("login"))
+
+    # Get user's owned games (both official and community)
+    try:
+        # Official games
+        official_games = UserGame.query.filter_by(username=session["username"]).filter(UserGame.game_id.isnot(None)).join(Game).order_by(UserGame.purchase_date.desc()).all()
+        # Community games
+        community_games = UserGame.query.filter_by(username=session["username"]).filter(UserGame.game_id.is_(None)).order_by(UserGame.purchase_date.desc()).all()
+        user_games = official_games + community_games
+    except Exception as e:
+        user_games = []
+
+    return render_template("library.html", user_games=user_games)
 
 # ---------- CUSTOMER: MARKETPLACE ----------
 @app.route("/marketplace")
@@ -546,16 +559,31 @@ def marketplace():
         # Add pagination
         user_games = query.order_by(UserGame.purchase_date).offset(offset).limit(per_page).all()
 
+        # Get approved community games
+        approved_query = GameSuggestion.query.filter_by(status='approved')
+
+        if search:
+            approved_query = approved_query.filter(GameSuggestion.title.ilike(f"%{search}%"))
+
+        if platform_filter:
+            approved_query = approved_query.filter_by(platform=platform_filter)
+
+        if genre_filter:
+            approved_query = approved_query.filter_by(genre=genre_filter)
+
+        approved_suggestions = approved_query.order_by(GameSuggestion.date_suggested.desc()).all()
+
         # Get unique platforms for filter dropdown
         platforms = [p[0] for p in db.session.query(Game.platform).distinct().all()]
     except Exception as e:
         flash("Error loading marketplace.", "error")
         user_games = []
+        approved_suggestions = []
         platforms = []
         total_pages = 0
         page = 1
 
-    return render_template("marketplace.html", user_games=user_games, platforms=platforms, search=search, platform_filter=platform_filter, genre_filter=genre_filter, page=page, total_pages=total_pages)
+    return render_template("marketplace.html", user_games=user_games, approved_suggestions=approved_suggestions, platforms=platforms, search=search, platform_filter=platform_filter, genre_filter=genre_filter, page=page, total_pages=total_pages)
 
 # ---------- CUSTOMER: SELL GAME ----------
 @app.route("/sell/<int:user_game_id>", methods=["GET", "POST"])
@@ -735,6 +763,59 @@ def rate_game(game_id):
             flash("Error submitting rating.", "error")
 
     return render_template("rate_game.html", game=game)
+
+# ---------- FORGOT PASSWORD ----------
+@app.route("/forgot_password", methods=["GET", "POST"])
+def forgot_password():
+    username = None
+    user_found = False
+
+    if request.method == "POST":
+        username = request.form["username"].strip()
+
+        try:
+            user = User.query.filter_by(username=username).first()
+            if user:
+                user_found = True
+            else:
+                flash("Username not found.", "error")
+        except Exception as e:
+            flash("An error occurred. Please try again.", "error")
+
+    if request.method == "POST" and user_found:
+        # Show password reset form
+        return render_template("forgot_password.html", username=username, show_reset=True)
+
+    # Handle password reset
+    if request.method == "POST" and "new_password" in request.form:
+        username = request.form["username"]
+        new_password = request.form["new_password"]
+        confirm_password = request.form["confirm_password"]
+
+        if new_password != confirm_password:
+            flash("Passwords do not match.", "error")
+            return render_template("forgot_password.html", username=username, show_reset=True)
+
+        # Validate password
+        is_valid, message = validate_password(new_password)
+        if not is_valid:
+            flash(message, "error")
+            return render_template("forgot_password.html", username=username, show_reset=True)
+
+        try:
+            user = User.query.filter_by(username=username).first()
+            if user:
+                user.set_password(new_password)
+                db.session.commit()
+                flash("Password changed successfully. Please log in.", "success")
+                return redirect(url_for("login"))
+            else:
+                flash("User not found.", "error")
+        except Exception as e:
+            db.session.rollback()
+            flash("An error occurred. Please try again.", "error")
+
+    return render_template("forgot_password.html", username=username, show_reset=False)
 
 # ---------- LOGOUT ----------
 @app.route("/logout")

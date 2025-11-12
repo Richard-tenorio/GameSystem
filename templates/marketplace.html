@@ -94,6 +94,10 @@
             margin: 5px 0;
             color: #e0e0e0;
         }
+        .status-approved {
+            color: #28a745;
+            font-weight: bold;
+        }
         .game-card .btn {
             margin-top: 15px;
         }
@@ -151,12 +155,13 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="flash {{ category }}">{{ message }}</div>
+                    <div class="flash {{ category }}" role="alert" aria-live="assertive">{{ message }}</div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
         <section class="section">
+            <h3>Used Games for Sale</h3>
             <div class="games-grid">
                 {% for user_game in user_games %}
                     <div class="game-card">
@@ -173,6 +178,28 @@
 
             {% if not user_games %}
                 <p>No used games available for sale.</p>
+            {% endif %}
+
+            <h3>Community Games</h3>
+            <div class="games-grid">
+                {% for suggestion in approved_suggestions %}
+                    <div class="game-card">
+                        <h3>{{ suggestion.title }}</h3>
+                        <p><strong>Platform:</strong> {{ suggestion.platform }}</p>
+                        <p><strong>Genre:</strong> {{ suggestion.genre }}</p>
+                        <p><strong>Status:</strong> <span class="status-approved">Community Game</span></p>
+                        <p><strong>Price:</strong> Free</p>
+                        <p><strong>Suggested by:</strong> {{ suggestion.suggested_by }}</p>
+                        {% if suggestion.description %}
+                            <p><strong>Description:</strong> {{ suggestion.description }}</p>
+                        {% endif %}
+                        <a href="{{ url_for('buy', game_id=suggestion.id) }}" class="btn" onclick="return confirm('Are you sure you want to add this community game to your library?')">Add to Library</a>
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% if not approved_suggestions %}
+                <p>No community games available.</p>
             {% endif %}
 
             <!-- Pagination -->

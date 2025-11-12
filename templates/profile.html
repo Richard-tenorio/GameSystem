@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <title>Profile - GameHub</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
         .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
@@ -11,7 +12,14 @@
     </style>
 </head>
 <body>
-    <div class="box">
+    <header class="header-nav">
+        <div class="logo">GameHub</div>
+        <div class="nav-links">
+            <a href="{{ url_for('customer') }}"><i class="fas fa-gamepad icon"></i>Browse Games</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+        </div>
+    </header>
+    <main class="main-content">
         <h1>Welcome {{ session['username'] }}</h1>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -47,9 +55,9 @@
             <tbody>
                 {% for purchase in purchases %}
                 <tr>
-                    <td>{{ purchase.Game.title }}</td>
-                    <td>{{ purchase.Game.platform }}</td>
-                    <td>{{ purchase.Game.genre }}</td>
+                    <td>{{ purchase.game.title }}</td>
+                    <td>{{ purchase.game.platform }}</td>
+                    <td>{{ purchase.game.genre }}</td>
                     <td>{{ purchase.purchase_date.strftime('%Y-%m-%d') }}</td>
                     <td>{{ purchase.condition.title() }}</td>
                     <td>${{ "%.2f"|format(purchase.price_paid) }}</td>
@@ -62,50 +70,7 @@
         <p>You haven't purchased any games yet.</p>
         {% endif %}
 
-        <h2>My Games</h2>
-        {% if user_games %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Game Title</th>
-                    <th>Platform</th>
-                    <th>Genre</th>
-                    <th>Purchase Date</th>
-                    <th>Condition</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user_game in user_games %}
-                <tr>
-                    <td>{{ user_game.Game.title }}</td>
-                    <td>{{ user_game.Game.platform }}</td>
-                    <td>{{ user_game.Game.genre }}</td>
-                    <td>{{ user_game.purchase_date.strftime('%Y-%m-%d') }}</td>
-                    <td>{{ user_game.condition.title() }}</td>
-                    <td>
-                        {% if user_game.listed_for_sale %}
-                            Listed for Sale (${{ "%.2f"|format(user_game.sale_price) }})
-                        {% else %}
-                            Owned
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if not user_game.listed_for_sale %}
-                            <a href="{{ url_for('sell', user_game_id=user_game.id) }}" class="btn">Sell</a>
-                            <a href="{{ url_for('rate_game', game_id=user_game.game_id) }}" class="btn">Rate</a>
-                        {% else %}
-                            Listed
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p>You don't own any games yet.</p>
-        {% endif %}
+        <p><a href="{{ url_for('library') }}">View My Game Library</a></p>
 
         <h2>My Reviews & Ratings</h2>
         {% if ratings %}
@@ -122,8 +87,8 @@
             <tbody>
                 {% for rating in ratings %}
                 <tr>
-                    <td>{{ rating.title }}</td>
-                    <td>{{ rating.platform }}</td>
+                    <td>{{ rating.game.title }}</td>
+                    <td>{{ rating.game.platform }}</td>
                     <td>
                         {% for i in range(5) %}
                             {% if i < rating.rating %}
@@ -143,8 +108,7 @@
         <p>You haven't rated any games yet.</p>
         {% endif %}
 
-        <p><a href="{{ url_for('customer') }}">Browse Games</a> | <a href="{{ url_for('marketplace') }}">Marketplace</a> | <a href="{{ url_for('logout') }}">Logout</a></p>
-    </div>
+    </main>
 </body>
 </html>
 <script>
