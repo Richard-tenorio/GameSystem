@@ -83,11 +83,15 @@
         <tr>
             <th>Username</th>
             <th>Role</th>
+            <th>Balance</th>
+            <th>Actions</th>
         </tr>
         {% for user in users %}
         <tr>
             <td>{{ user.username }}</td>
             <td>{{ user.role }}</td>
+            <td>${{ "%.2f"|format(user.balance) }}</td>
+            <td><a href="{{ url_for('add_credits', username=user.username) }}">Add Credits</a></td>
         </tr>
         {% endfor %}
             </table>

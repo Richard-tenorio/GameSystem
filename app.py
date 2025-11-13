@@ -38,6 +38,35 @@ def validate_password(password):
         return False, "Password must contain at least one special character (e.g., @, #, !)."
     return True, ""
 
+def check_user_balance(username, required_amount):
+    """
+    Check if user has sufficient balance for a purchase.
+    Returns (has_balance, current_balance)
+    """
+    try:
+        user = User.query.filter_by(username=username).first()
+        if user:
+            return user.balance >= required_amount, user.balance
+        return False, 0.0
+    except Exception:
+        return False, 0.0
+
+def deduct_user_balance(username, amount):
+    """
+    Deduct amount from user's balance.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        user = User.query.filter_by(username=username).first()
+        if user and user.balance >= amount:
+            user.balance -= amount
+            db.session.commit()
+            return True
+        return False
+    except Exception:
+        db.session.rollback()
+        return False
+
 # ---------- LOGIN (Root Route) ----------
 @app.route("/", methods=["GET", "POST"])
 def login():
@@ -71,6 +100,9 @@ def login():
 def register():
     if request.method == "POST":
         username = request.form["username"]
+        email = request.form["email"]
+        full_name = request.form["full_name"]
+        age = request.form["age"]
         password = request.form["password"]
         confirm_password = request.form["confirm_password"]
         role = "customer"  # Users can only register as customers
@@ -86,12 +118,32 @@ def register():
             flash(message, "error")
             return render_template("register.html")
 
+        # Validate age
+        try:
+            age_int = int(age)
+            if age_int < 13 or age_int > 120:
+                flash("Age must be between 13 and 120.", "error")
+                return render_template("register.html")
+        except ValueError:
+            flash("Invalid age.", "error")
+            return render_template("register.html")
+
+        # Validate email format
+        import re
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+            flash("Invalid email format.", "error")
+            return render_template("register.html")
+
         try:
             existing_user = User.query.filter_by(username=username).first()
+            existing_email = User.query.filter_by(email=email).first()
+
             if existing_user:
                 flash("Username already exists. Please choose another.", "error")
+            elif existing_email:
+                flash("Email address already registered. Please use another.", "error")
             else:
-                user = User(username=username, role=role)
+                user = User(username=username, email=email, full_name=full_name, age=age_int, role=role)
                 user.set_password(password)
                 db.session.add(user)
                 db.session.commit()
@@ -297,6 +349,43 @@ def reactivate_user(username):
             flash("Error reactivating user.", "error")
     return redirect(url_for("user_management"))
 
+# ---------- ADMIN: ADD CREDITS ----------
+@app.route("/add_credits/<username>", methods=["GET", "POST"])
+def add_credits(username):
+    if "username" not in session or session["role"] != "admin":
+        return redirect(url_for("login"))
+
+    try:
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            flash("User not found.", "error")
+            return redirect(url_for("admin"))
+    except Exception as e:
+        flash("Error loading user.", "error")
+        return redirect(url_for("admin"))
+
+    if request.method == "POST":
+        credits_to_add = request.form.get("credits", "").strip()
+        try:
+            credits_float = float(credits_to_add)
+            if credits_float <= 0:
+                flash("Credits must be a positive number.", "error")
+                return render_template("add_credits.html", user=user)
+        except ValueError:
+            flash("Invalid credits amount.", "error")
+            return render_template("add_credits.html", user=user)
+
+        try:
+            user.balance += credits_float
+            db.session.commit()
+            flash(f"Added ${credits_float:.2f} to {username}'s balance.", "success")
+            return redirect(url_for("admin"))
+        except Exception as e:
+            db.session.rollback()
+            flash("Error adding credits.", "error")
+
+    return render_template("add_credits.html", user=user)
+
 # ---------- ADMIN: MANAGE SUGGESTIONS ----------
 @app.route("/manage_suggestions")
 def manage_suggestions():
@@ -360,6 +449,10 @@ def customer():
     genre_filter = request.args.get('genre', '')
 
     try:
+        # Get user balance
+        user = User.query.filter_by(username=session["username"]).first()
+        user_balance = user.balance if user else 0.0
+
         # Get official games (added by admin)
         official_query = Game.query
 
@@ -426,32 +519,23 @@ def customer():
         platforms = []
         total_pages = 0
         page = 1
-    return render_template("customer.html", games=official_games, user_games=user_games, approved_suggestions=approved_suggestions, platforms=platforms, search=search, platform_filter=platform_filter, genre_filter=genre_filter, page=page, total_pages=total_pages)
+        user_balance = 0.0
+    return render_template("customer.html", games=official_games, user_games=user_games, approved_suggestions=approved_suggestions, platforms=platforms, search=search, platform_filter=platform_filter, genre_filter=genre_filter, page=page, total_pages=total_pages, user_balance=user_balance)
 
 # ---------- CUSTOMER: BUY GAME ----------
 @app.route("/buy/<int:game_id>")
 def buy(game_id):
     if "username" in session and session["role"] == "customer":
         try:
+            user = User.query.filter_by(username=session["username"]).first()
             game = Game.query.get(game_id)
             if game:
                 if game.quantity <= 0:
                     flash("Game is out of stock.", "error")
                     return redirect(url_for("customer"))
 
-                # Create purchase record
-                purchase = Purchase(username=session["username"], game_id=game_id, price_paid=game.price)
-                db.session.add(purchase)
-
-                # Create user game entry
-                user_game = UserGame(username=session["username"], game_id=game_id, condition='new')
-                db.session.add(user_game)
-
-                # Decrease game quantity
-                game.quantity -= 1
-
-                db.session.commit()
-                flash("Game purchased successfully.", "success")
+                # Redirect to confirmation page
+                return redirect(url_for('confirm_purchase', game_id=game_id, condition='new'))
             else:
                 # Check if it's a community game
                 suggestion = GameSuggestion.query.get(game_id)
@@ -469,36 +553,123 @@ def buy(game_id):
             flash("Error purchasing game.", "error")
     return redirect(url_for("customer"))
 
-# ---------- CUSTOMER: PROFILE ----------
-@app.route("/profile", methods=["GET", "POST"])
-def profile():
+# ---------- CUSTOMER: CONFIRM PURCHASE ----------
+@app.route("/confirm_purchase/<int:game_id>")
+def confirm_purchase(game_id):
     if "username" not in session or session["role"] != "customer":
         return redirect(url_for("login"))
 
-    if request.method == "POST":
-        new_password = request.form["password"]
-        # Validate password
-        is_valid, message = validate_password(new_password)
-        if not is_valid:
-            flash(message, "error")
-            # Get user's purchase history and ratings to render template with error
-            try:
-                purchases = Purchase.query.filter_by(username=session["username"]).join(Game).order_by(Purchase.purchase_date.desc()).all()
-            except Exception as e:
-                purchases = []
-            try:
-                ratings = Rating.query.filter_by(username=session["username"]).join(Game).order_by(Rating.date.desc()).all()
-            except Exception as e:
-                ratings = []
-            return render_template("profile.html", purchases=purchases, ratings=ratings)
-        try:
-            user = User.query.filter_by(username=session["username"]).first()
-            user.set_password(new_password)
-            db.session.commit()
-            flash("Password updated successfully.", "success")
-        except Exception as e:
-            db.session.rollback()
-            flash("Error updating password.", "error")
+    condition = request.args.get('condition', 'new')
+
+    try:
+        user = User.query.filter_by(username=session["username"]).first()
+        game = Game.query.get(game_id)
+
+        if not game:
+            flash("Game not found.", "error")
+            return redirect(url_for("customer"))
+
+        if condition == 'new':
+            if game.quantity <= 0:
+                flash("Game is out of stock.", "error")
+                return redirect(url_for("customer"))
+            price = game.price
+        else:
+            # For used games, get from marketplace
+            user_game = UserGame.query.filter_by(game_id=game_id, listed_for_sale=True).first()
+            if not user_game:
+                flash("Game not found for sale.", "error")
+                return redirect(url_for("marketplace"))
+            price = user_game.sale_price
+
+        user_balance = user.balance if user else 0.0
+
+    except Exception as e:
+        flash("Error loading purchase details.", "error")
+        return redirect(url_for("customer"))
+
+    return render_template("confirm_purchase.html", game=game, condition=condition.title(), price=price, user_balance=user_balance)
+
+# ---------- CUSTOMER: PROCESS PURCHASE ----------
+@app.route("/process_purchase/<int:game_id>")
+def process_purchase(game_id):
+    if "username" not in session or session["role"] != "customer":
+        return redirect(url_for("login"))
+
+    condition = request.args.get('condition', 'new')
+
+    try:
+        user = User.query.filter_by(username=session["username"]).first()
+        game = Game.query.get(game_id)
+
+        if not game:
+            flash("Game not found.", "error")
+            return redirect(url_for("customer"))
+
+        if condition == 'new':
+            if game.quantity <= 0:
+                flash("Game is out of stock.", "error")
+                return redirect(url_for("customer"))
+            price = game.price
+        else:
+            # For used games, get from marketplace
+            user_game = UserGame.query.filter_by(game_id=game_id, listed_for_sale=True).first()
+            if not user_game:
+                flash("Game not found for sale.", "error")
+                return redirect(url_for("marketplace"))
+            price = user_game.sale_price
+
+        # Check if user has sufficient balance
+        has_balance, current_balance = check_user_balance(session["username"], price)
+        if not has_balance:
+            flash(f"Insufficient balance. You need ${price:.2f} but only have ${current_balance:.2f}.", "error")
+            return redirect(url_for("confirm_purchase", game_id=game_id, condition=condition))
+
+        # Deduct balance
+        if not deduct_user_balance(session["username"], price):
+            flash("Error processing payment.", "error")
+            return redirect(url_for("confirm_purchase", game_id=game_id, condition=condition))
+
+        if condition == 'new':
+            # Create purchase record
+            purchase = Purchase(username=session["username"], game_id=game_id, price_paid=price)
+            db.session.add(purchase)
+
+            # Create user game entry
+            user_game = UserGame(username=session["username"], game_id=game_id, condition='new')
+            db.session.add(user_game)
+
+            # Decrease game quantity
+            game.quantity -= 1
+        else:
+            # Used game purchase
+            seller_user_game = UserGame.query.filter_by(game_id=game_id, listed_for_sale=True).first()
+
+            # Create purchase record
+            purchase = Purchase(username=session["username"], game_id=game_id, condition='used', price_paid=price, seller_username=seller_user_game.username)
+            db.session.add(purchase)
+
+            # Transfer ownership
+            seller_user_game.username = session["username"]
+            seller_user_game.condition = 'used'
+            seller_user_game.listed_for_sale = False
+            seller_user_game.sale_price = None
+            seller_user_game.purchase_date = datetime.utcnow()
+
+        db.session.commit()
+        flash("Game purchased successfully.", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        flash("Error processing purchase.", "error")
+
+    return redirect(url_for("customer"))
+
+# ---------- CUSTOMER: PROFILE ----------
+@app.route("/profile")
+def profile():
+    if "username" not in session or session["role"] != "customer":
+        return redirect(url_for("login"))
 
     # Get user's purchase history
     try:
@@ -512,7 +683,52 @@ def profile():
     except Exception as e:
         ratings = []
 
-    return render_template("profile.html", purchases=purchases, ratings=ratings)
+    # Get user balance
+    try:
+        user = User.query.filter_by(username=session["username"]).first()
+        user_balance = user.balance if user else 0.0
+    except Exception as e:
+        user_balance = 0.0
+
+    return render_template("profile.html", purchases=purchases, ratings=ratings, user_balance=user_balance)
+
+# ---------- CUSTOMER: SETTINGS ----------
+@app.route("/settings", methods=["GET", "POST"])
+def settings():
+    if "username" not in session or session["role"] != "customer":
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        current_password = request.form["current_password"]
+        new_password = request.form["new_password"]
+        confirm_password = request.form["confirm_password"]
+
+        # Verify current password
+        user = User.query.filter_by(username=session["username"]).first()
+        if not user or not user.check_password(current_password):
+            flash("Current password is incorrect.", "error")
+            return render_template("settings.html")
+
+        # Check if new passwords match
+        if new_password != confirm_password:
+            flash("New passwords do not match.", "error")
+            return render_template("settings.html")
+
+        # Validate new password
+        is_valid, message = validate_password(new_password)
+        if not is_valid:
+            flash(message, "error")
+            return render_template("settings.html")
+
+        try:
+            user.set_password(new_password)
+            db.session.commit()
+            flash("Password updated successfully.", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash("Error updating password.", "error")
+
+    return render_template("settings.html")
 
 # ---------- CUSTOMER: LIBRARY ----------
 @app.route("/library")
@@ -646,27 +862,10 @@ def buy_used(user_game_id):
                 flash("You cannot buy your own game.", "error")
                 return redirect(url_for("marketplace"))
 
-            game = Game.query.get(user_game.game_id)
-            if not game:
-                flash("Game not found.", "error")
-                return redirect(url_for("marketplace"))
-
-            # Create purchase record
-            purchase = Purchase(username=session["username"], game_id=user_game.game_id, condition='used', price_paid=user_game.sale_price, seller_username=user_game.username)
-            db.session.add(purchase)
-
-            # Transfer ownership
-            user_game.username = session["username"]
-            user_game.condition = 'used'
-            user_game.listed_for_sale = False
-            user_game.sale_price = None
-            user_game.purchase_date = datetime.utcnow()
-
-            db.session.commit()
-            flash("Used game purchased successfully.", "success")
+            # Redirect to confirmation page
+            return redirect(url_for('confirm_purchase', game_id=user_game.game_id, condition='used'))
         except Exception as e:
-            db.session.rollback()
-            flash("Error purchasing used game.", "error")
+            flash("Error loading game.", "error")
     return redirect(url_for("marketplace"))
 
 # ---------- CUSTOMER: SUGGEST GAME ----------

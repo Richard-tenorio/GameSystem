@@ -8,7 +8,10 @@
 </head>
 <body>
     <header class="header-nav">
-        <div class="logo">GameHub</div>
+        <div class="logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameHub Logo">
+            GameHub
+        </div>
         <form method="get" action="{{ url_for('customer') }}" class="search-form">
             <input type="text" name="search" placeholder="Search games..." value="{{ request.args.get('search', '') }}">
             <select name="genre">
@@ -20,6 +23,7 @@
             <button type="submit">Search</button>
         </form>
         <div class="nav-links">
+            <span class="balance-display">Balance: ${{ "%.2f"|format(user_balance) }}</span>
             <a href="{{ url_for('library') }}"><i class="fas fa-book icon"></i>Library</a>
             <a href="{{ url_for('profile') }}"><i class="fas fa-user icon"></i>Profile</a>
             <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Account Settings - GameHub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .settings-section {
+            margin-bottom: 30px;
+        }
+        .settings-card {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .settings-card h3 {
+            margin-top: 0;
+            color: #495057;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .balance-display {
+            background-color: #e8f5e8;
+            border: 1px solid #28a745;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .balance-amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+        .error-text {
+            color: red;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <header class="header-nav">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameHub Logo">
+            GameHub
+        </div>
+        <div class="nav-links">
+            <a href="{{ url_for('customer') }}"><i class="fas fa-gamepad icon"></i>Browse Games</a>
+            <a href="{{ url_for('profile') }}"><i class="fas fa-user icon"></i>Profile</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+        </div>
+    </header>
+    <main class="main-content">
+        <h1>Account Settings</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="settings-section">
+            <div class="settings-card">
+                <h3><i class="fas fa-wallet icon"></i>Account Balance</h3>
+                <div class="balance-display">
+                    <p>Current Balance</p>
+                    <div class="balance-amount">${{ "%.2f"|format(session.get('balance', 0.0)) }}</div>
+                </div>
+                <p><em>Note: Contact an administrator to add credits to your account.</em></p>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-card">
+                <h3><i class="fas fa-key icon"></i>Change Password</h3>
+                <form method="POST" onsubmit="return validatePassword()">
+                    <div class="form-group">
+                        <label for="current_password">Current Password:</label>
+                        <input type="password" id="current_password" name="current_password" placeholder="Enter current password" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="new_password">New Password:</label>
+                        <input type="password" id="new_password" name="new_password" placeholder="Enter new password" required>
+                        <div id="password-error" class="error-text" style="display: none;"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirm_password">Confirm New Password:</label>
+                        <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm new password" required>
+                        <div id="confirm-error" class="error-text" style="display: none;"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Update Password</button>
+                    <a href="{{ url_for('profile') }}" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-card">
+                <h3><i class="fas fa-user-shield icon"></i>Account Information</h3>
+                <p><strong>Username:</strong> {{ session['username'] }}</p>
+                <p><strong>Role:</strong> {{ session['role'].title() }}</p>
+                <p><strong>Member Since:</strong> Account created</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function validatePassword() {
+            const currentPassword = document.getElementById('current_password').value;
+            const newPassword = document.getElementById('new_password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+            const passwordError = document.getElementById('password-error');
+            const confirmError = document.getElementById('confirm-error');
+
+            // Reset errors
+            passwordError.style.display = 'none';
+            confirmError.style.display = 'none';
+
+            // Check if new password matches confirmation
+            if (newPassword !== confirmPassword) {
+                confirmError.innerHTML = 'Passwords do not match.';
+                confirmError.style.display = 'block';
+                return false;
+            }
+
+            // Validate new password strength
+            const errors = [];
+            if (newPassword.length < 8) {
+                errors.push('Password must be at least 8 characters long.');
+            }
+            if (!/[A-Z]/.test(newPassword)) {
+                errors.push('Password must contain at least one uppercase letter.');
+            }
+            if (!/[a-z]/.test(newPassword)) {
+                errors.push('Password must contain at least one lowercase letter.');
+            }
+            if (!/\d/.test(newPassword)) {
+                errors.push('Password must contain at least one digit.');
+            }
+            if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
+                errors.push('Password must contain at least one special character.');
+            }
+
+            if (errors.length > 0) {
+                passwordError.innerHTML = errors.join('<br>');
+                passwordError.style.display = 'block';
+                return false;
+            }
+
+            return true;
+        }
+    </script>
+</body>
+</html>
