@@ -2,9 +2,9 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Profile - GameHub</title>
+    <title>Profile - GameSystem</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Font Awesome removed for offline compatibility -->
     <style>
         .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
         .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
@@ -14,12 +14,12 @@
 <body>
     <header class="header-nav">
         <div class="logo">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameHub Logo">
-            GameHub
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
+            GameSystem
         </div>
         <div class="nav-links">
-            <a href="{{ url_for('customer') }}"><i class="fas fa-gamepad icon"></i>Browse Games</a>
-            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+            <a href="{{ url_for('customer') }}">Browse Games</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')">Logout</a>
         </div>
     </header>
     <main class="main-content">
@@ -35,7 +35,7 @@
 
         <section class="section">
             <div class="card">
-                <h2><i class="fas fa-user icon"></i>Account Overview</h2>
+                <h2>Account Overview</h2>
                 <p><strong>Username:</strong> {{ session['username'] }}</p>
                 <p><strong>Role:</strong> {{ session['role'].title() }}</p>
                 <p><strong>Current Balance:</strong> ${{ "%.2f"|format(user_balance) }}</p>
@@ -45,7 +45,7 @@
 
         <section class="section">
             <div class="card">
-                <h2><i class="fas fa-shopping-cart icon"></i>Purchase History</h2>
+                <h2>Purchase History</h2>
         {% if purchases %}
         <table>
             <thead>
@@ -83,7 +83,7 @@
 
         <section class="section">
             <div class="card">
-                <h2><i class="fas fa-star icon"></i>My Reviews & Ratings</h2>
+                <h2>My Reviews & Ratings</h2>
         {% if ratings %}
         <table>
             <thead>

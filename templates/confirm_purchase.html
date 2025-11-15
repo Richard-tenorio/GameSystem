@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Confirm Purchase - GameHub</title>
+    <title>Confirm Purchase - GameSystem</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -103,8 +103,8 @@
 <body>
     <header class="header-nav">
         <div class="logo">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameHub Logo">
-            GameHub
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
+            GameSystem
         </div>
         <div class="nav-links">
             <span class="balance-display">Balance: ${{ "%.2f"|format(user_balance) }}</span>

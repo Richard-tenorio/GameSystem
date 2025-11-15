@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, make_response, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from config import Config
 from models import db, User, Game, Purchase, UserGame, Rating, GameSuggestion
@@ -9,6 +9,8 @@ import re
 import logging
 import secrets
 from datetime import datetime, timedelta
+from functools import wraps
+from sqlalchemy import text
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -19,6 +21,65 @@ with app.app_context():
     db.create_all()
 
 app.permanent_session_lifetime = timedelta(minutes=30)
+
+# Platform constants for dropdown menus
+PLATFORMS = [
+    # Sony PlayStation
+    "PlayStation 1 (PS1)",
+    "PlayStation 2 (PS2)",
+    "PlayStation 3 (PS3)",
+    "PlayStation 4 (PS4 / Slim / Pro)",
+    "PlayStation 5 (PS5 / Digital Edition)",
+    "PlayStation Portable (PSP)",
+    "PlayStation Vita (PS Vita)",
+    "PlayStation Portal (Remote device)",
+    # Microsoft Xbox
+    "Xbox (Original)",
+    "Xbox 360",
+    "Xbox One / One S / One X",
+    "Xbox Series S",
+    "Xbox Series X",
+    # Nintendo
+    "Nintendo Entertainment System (NES)",
+    "Super Nintendo (SNES)",
+    "Nintendo 64 (N64)",
+    "Nintendo GameCube",
+    "Nintendo Wii",
+    "Nintendo Wii U",
+    "Nintendo Switch",
+    "Nintendo Switch OLED",
+    "Nintendo Switch Lite",
+    "Game Boy",
+    "Game Boy Color",
+    "Game Boy Advance",
+    "Nintendo DS",
+    "Nintendo DS Lite",
+    "DSi / DSi XL",
+    "Nintendo 3DS",
+    "Nintendo 3DS XL",
+    "New 2DS XL",
+    # Sega
+    "Sega Master System",
+    "Sega Genesis / Mega Drive",
+    "Sega Saturn",
+    "Sega Dreamcast",
+    "Game Gear",
+    # Atari
+    "Atari 2600",
+    "Atari 5200",
+    "Atari 7800",
+    "Atari Jaguar",
+    "Atari Lynx",
+    "Atari VCS (Modern re-release)",
+    # Other Retro / Misc
+    "Neo Geo",
+    "Neo Geo Pocket",
+    "TurboGrafx-16 (PC Engine)",
+    "Philips CD-i",
+    "Intellivision",
+    "ColecoVision",
+    "Panasonic 3DO"
+]
 
 
 
@@ -166,27 +227,43 @@ def admin():
     offset = (page - 1) * per_page
 
     try:
-        # Get total games count for pagination
-        total_games_count = Game.query.count()
-        total_pages = (total_games_count + per_page - 1) // per_page
-
-        # Get games with pagination
-        games = Game.query.order_by(Game.id).offset(offset).limit(per_page).all()
-
-        # Calculate sold count for each game
-        for game in games:
-            game.sold_count = Purchase.query.filter_by(game_id=game.id).count()
-
-        # Get statistics
+        # Optimized queries: Combine statistics into fewer DB calls
+        # Get total counts in one query
         total_games = Game.query.count()
         sold_games = Purchase.query.count()
         total_users = User.query.filter_by(role='customer').count()
-        active_users = User.query.filter_by(role='customer').count()  # All customers are active for now
+        active_users = total_users  # All customers are active for now
 
-        # Get all users for the list
+        # Calculate total revenue from all purchases
+        total_revenue = db.session.query(db.func.sum(Purchase.price_paid)).scalar() or 0.0
+
+        # Get games with pagination and pre-calculated sold counts using JOIN
+        game_rows = db.session.query(
+            Game,
+            db.func.count(Purchase.id).label('sold_count')
+        ).outerjoin(Purchase, Game.id == Purchase.game_id)\
+         .group_by(Game.id)\
+         .order_by(Game.id)\
+         .offset(offset)\
+         .limit(per_page)\
+         .all()
+
+        # Convert Row objects to Game objects with sold_count attribute
+        games = []
+        for row in game_rows:
+            game = row[0]  # Game object
+            sold_count = row[1]  # sold_count value
+            game.sold_count = sold_count
+            games.append(game)
+
+        # Calculate total pages
+        total_games_count = total_games
+        total_pages = (total_games_count + per_page - 1) // per_page
+
+        # Get all users for the list (already optimized with index)
         users = User.query.order_by(User.username).all()
 
-        # Check for pending suggestions and notify admin
+        # Check for pending suggestions (optimized with index)
         pending_count = GameSuggestion.query.filter_by(status='pending').count()
 
     except Exception as e:
@@ -194,9 +271,14 @@ def admin():
         games = []
         users = []
         total_games = sold_games = total_users = active_users = total_pages = 0
+        total_revenue = 0.0
         page = 1
+        pending_count = 0
 
-    return render_template("admin.html", games=games, users=users, total_games=total_games, sold_games=sold_games, total_users=total_users, active_users=active_users, page=page, total_pages=total_pages, errors={}, pending_count=pending_count)
+    # Get approved community games for admin dashboard
+    approved_suggestions = GameSuggestion.query.filter_by(status='approved').order_by(GameSuggestion.date_suggested.desc()).all()
+
+    return render_template("admin.html", games=games, users=users, total_games=total_games, sold_games=sold_games, total_revenue=total_revenue, total_users=total_users, active_users=active_users, approved_suggestions=approved_suggestions, platforms=PLATFORMS, page=page, total_pages=total_pages, errors={}, pending_count=pending_count)
 
 # ---------- ADMIN: ADD GAME ----------
 @app.route("/add_game", methods=["POST"])
@@ -241,6 +323,22 @@ def add_game():
             flash("Price must be a valid number.", "error")
             return redirect(url_for("admin"))
 
+        # Validate image upload
+        if 'image' not in request.files:
+            flash("Image file is required.", "error")
+            return redirect(url_for("admin"))
+
+        image_file = request.files['image']
+        if not image_file or image_file.filename == '':
+            flash("Image file is required.", "error")
+            return redirect(url_for("admin"))
+
+        # Validate file type
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        if '.' not in image_file.filename or image_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+            flash("Invalid image file type. Please upload PNG, JPG, JPEG, GIF, or WebP.", "error")
+            return redirect(url_for("admin"))
+
         # Check if game title already exists
         existing_game = Game.query.filter_by(title=title).first()
         if existing_game:
@@ -248,7 +346,14 @@ def add_game():
             return redirect(url_for("admin"))
 
         try:
-            game = Game(title=title, platform=platform, quantity=quantity_int, genre=genre, price=price_float)
+            # Generate unique filename
+            import uuid
+            filename = str(uuid.uuid4()) + '.' + image_file.filename.rsplit('.', 1)[1].lower()
+            image_path = os.path.join('static', 'uploads', filename)
+            os.makedirs(os.path.dirname(image_path), exist_ok=True)
+            image_file.save(image_path)
+
+            game = Game(title=title, platform=platform, quantity=quantity_int, genre=genre, price=price_float, image=filename)
             db.session.add(game)
             db.session.commit()
             flash("Game added successfully.", "success")
@@ -386,6 +491,57 @@ def add_credits(username):
 
     return render_template("add_credits.html", user=user)
 
+# ---------- ADMIN: CHANGE LOGO ----------
+@app.route("/change_logo", methods=["POST"])
+def change_logo():
+    if "username" not in session or session["role"] != "admin":
+        return redirect(url_for("login"))
+
+    if 'logo' not in request.files:
+        flash("Logo file is required.", "error")
+        return redirect(url_for("admin"))
+
+    logo_file = request.files['logo']
+    if not logo_file or logo_file.filename == '':
+        flash("Logo file is required.", "error")
+        return redirect(url_for("admin"))
+
+    # Validate file type
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    if '.' not in logo_file.filename or logo_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+        flash("Invalid logo file type. Please upload PNG, JPG, JPEG, GIF, or WebP.", "error")
+        return redirect(url_for("admin"))
+
+    # Validate confirmation
+    if not request.form.get('confirm_logo'):
+        flash("Please confirm the logo change.", "error")
+        return redirect(url_for("admin"))
+
+    try:
+        # Generate unique filename
+        import uuid
+        filename = 'logo.' + logo_file.filename.rsplit('.', 1)[1].lower()
+        logo_path = os.path.join('static', filename)
+        os.makedirs(os.path.dirname(logo_path), exist_ok=True)
+        logo_file.save(logo_path)
+
+        # Backup old logo (optional)
+        old_logo_path = os.path.join('static', 'logo.png')
+        if os.path.exists(old_logo_path):
+            backup_path = os.path.join('static', 'logo_backup.png')
+            import shutil
+            shutil.copy2(old_logo_path, backup_path)
+
+        # Replace the logo.png file
+        import shutil
+        shutil.move(logo_path, old_logo_path)
+
+        flash("Logo updated successfully.", "success")
+    except Exception as e:
+        flash("Error updating logo.", "error")
+
+    return redirect(url_for("admin"))
+
 # ---------- ADMIN: MANAGE SUGGESTIONS ----------
 @app.route("/manage_suggestions")
 def manage_suggestions():
@@ -432,7 +588,184 @@ def reject_suggestion(suggestion_id):
         except Exception as e:
             db.session.rollback()
             flash("Error rejecting suggestion.", "error")
-    return redirect(url_for("manage_suggestions"))
+    return redirect(url_for("admin"))
+
+# ---------- ADMIN: EDIT GAME ----------
+@app.route("/edit_game/<int:game_id>", methods=["GET", "POST"])
+def edit_game(game_id):
+    if "username" not in session or session["role"] != "admin":
+        return redirect(url_for("login"))
+
+    try:
+        game = Game.query.get(game_id)
+        if not game:
+            flash("Game not found.", "error")
+            return redirect(url_for("admin"))
+    except Exception as e:
+        flash("Error loading game.", "error")
+        return redirect(url_for("admin"))
+
+    if request.method == "POST":
+        title = request.form["title"].strip()
+        platform = request.form["platform"].strip()
+        genre = request.form.get("genre", "Action").strip()
+        price = request.form["price"].strip()
+        quantity = request.form["quantity"].strip()
+
+        # Validate inputs
+        if not title:
+            flash("Game title cannot be empty.", "error")
+            return render_template("edit_game.html", game=game)
+        if len(title) > 100:
+            flash("Game title must be 100 characters or less.", "error")
+            return render_template("edit_game.html", game=game)
+        if not platform:
+            flash("Platform cannot be empty.", "error")
+            return render_template("edit_game.html", game=game)
+        if len(platform) > 50:
+            flash("Platform must be 50 characters or less.", "error")
+            return render_template("edit_game.html", game=game)
+        if not genre:
+            flash("Genre cannot be empty.", "error")
+            return render_template("edit_game.html", game=game)
+
+        try:
+            quantity_int = int(quantity)
+            if quantity_int < 0:
+                flash("Quantity cannot be negative.", "error")
+                return render_template("edit_game.html", game=game)
+        except ValueError:
+            flash("Quantity must be a valid integer.", "error")
+            return render_template("edit_game.html", game=game)
+
+        try:
+            price_float = float(price)
+            if price_float < 0:
+                flash("Price cannot be negative.", "error")
+                return render_template("edit_game.html", game=game)
+        except ValueError:
+            flash("Price must be a valid number.", "error")
+            return render_template("edit_game.html", game=game)
+
+        # Check if title changed and if new title already exists
+        if title != game.title:
+            existing_game = Game.query.filter_by(title=title).first()
+            if existing_game:
+                flash("A game with this title already exists.", "error")
+                return render_template("edit_game.html", game=game)
+
+        # Handle image upload
+        if 'image' in request.files and request.files['image'].filename != '':
+            image_file = request.files['image']
+            if image_file:
+                # Validate file type
+                allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+                if '.' in image_file.filename or image_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+                    flash("Invalid image file type. Please upload PNG, JPG, JPEG, GIF, or WebP.", "error")
+                    return render_template("edit_game.html", game=game)
+
+                # Generate unique filename
+                import uuid
+                filename = str(uuid.uuid4()) + '.' + image_file.filename.rsplit('.', 1)[1].lower()
+                image_path = os.path.join('static', 'uploads', filename)
+                os.makedirs(os.path.dirname(image_path), exist_ok=True)
+                image_file.save(image_path)
+                game.image = filename
+
+        try:
+            game.title = title
+            game.platform = platform
+            game.genre = genre
+            game.price = price_float
+            game.quantity = quantity_int
+            db.session.commit()
+            flash("Game updated successfully.", "success")
+            return redirect(url_for("admin"))
+        except Exception as e:
+            db.session.rollback()
+            flash("Error updating game.", "error")
+
+    return render_template("edit_game.html", game=game, platforms=PLATFORMS)
+
+# ---------- ADMIN: EDIT SUGGESTION ----------
+@app.route("/edit_suggestion/<int:suggestion_id>", methods=["GET", "POST"])
+def edit_suggestion(suggestion_id):
+    if "username" not in session or session["role"] != "admin":
+        return redirect(url_for("login"))
+
+    try:
+        suggestion = GameSuggestion.query.get(suggestion_id)
+        if not suggestion:
+            flash("Suggestion not found.", "error")
+            return redirect(url_for("admin"))
+    except Exception as e:
+        flash("Error loading suggestion.", "error")
+        return redirect(url_for("admin"))
+
+    if request.method == "POST":
+        title = request.form["title"].strip()
+        platform = request.form["platform"].strip()
+        genre = request.form.get("genre", "Action").strip()
+        description = request.form.get("description", "").strip()
+
+        # Validate inputs
+        if not title:
+            flash("Game title cannot be empty.", "error")
+            return render_template("edit_suggestion.html", suggestion=suggestion)
+        if len(title) > 100:
+            flash("Game title must be 100 characters or less.", "error")
+            return render_template("edit_suggestion.html", suggestion=suggestion)
+        if not platform:
+            flash("Platform cannot be empty.", "error")
+            return render_template("edit_suggestion.html", suggestion=suggestion)
+        if len(platform) > 50:
+            flash("Platform must be 50 characters or less.", "error")
+            return render_template("edit_suggestion.html", suggestion=suggestion)
+        if not genre:
+            flash("Genre cannot be empty.", "error")
+            return render_template("edit_suggestion.html", suggestion=suggestion)
+
+        # Check if title changed and if new title already exists
+        if title != suggestion.title or platform != suggestion.platform:
+            existing_suggestion = GameSuggestion.query.filter_by(title=title, platform=platform).first()
+            if existing_suggestion and existing_suggestion.id != suggestion_id:
+                flash("A suggestion for this game already exists.", "error")
+                return render_template("edit_suggestion.html", suggestion=suggestion)
+
+        # Handle image upload
+        if 'image' in request.files and request.files['image'].filename != '':
+            image_file = request.files['image']
+            if image_file:
+                # Validate file type
+                allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+                if '.' in image_file.filename or image_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+                    flash("Invalid image file type. Please upload PNG, JPG, JPEG, GIF, or WebP.", "error")
+                    return render_template("edit_suggestion.html", suggestion=suggestion)
+
+                # Generate unique filename
+                import uuid
+                filename = str(uuid.uuid4()) + '.' + image_file.filename.rsplit('.', 1)[1].lower()
+                image_path = os.path.join('static', 'uploads', filename)
+                os.makedirs(os.path.dirname(image_path), exist_ok=True)
+                image_file.save(image_path)
+
+                # Store the filename in a simple text file for retrieval
+                with open(os.path.join('static', 'uploads', f'suggestion_{suggestion.id}.txt'), 'w') as f:
+                    f.write(filename)
+
+        try:
+            suggestion.title = title
+            suggestion.platform = platform
+            suggestion.genre = genre
+            suggestion.description = description
+            db.session.commit()
+            flash("Suggestion updated successfully.", "success")
+            return redirect(url_for("admin"))
+        except Exception as e:
+            db.session.rollback()
+            flash("Error updating suggestion.", "error")
+
+    return render_template("edit_suggestion.html", suggestion=suggestion, platforms=PLATFORMS)
 
 # ---------- CUSTOMER DASHBOARD ----------
 @app.route("/customer")
@@ -449,11 +782,11 @@ def customer():
     genre_filter = request.args.get('genre', '')
 
     try:
-        # Get user balance
+        # Optimized: Get user balance with single query
         user = User.query.filter_by(username=session["username"]).first()
         user_balance = user.balance if user else 0.0
 
-        # Get official games (added by admin)
+        # Optimized: Build official games query with filters
         official_query = Game.query
 
         if search:
@@ -465,9 +798,14 @@ def customer():
         if genre_filter:
             official_query = official_query.filter_by(genre=genre_filter)
 
+        # Get total count for pagination first (more efficient)
+        total_games_count = official_query.count()
+        total_pages = (total_games_count + per_page - 1) // per_page
+
+        # Then get paginated results
         official_games = official_query.order_by(Game.id).offset(offset).limit(per_page).all()
 
-        # Get used games for sale (only official games)
+        # Optimized: Get used games with JOIN and filters
         used_query = UserGame.query.filter_by(listed_for_sale=True).filter(UserGame.game_id.isnot(None)).join(Game)
 
         if search:
@@ -481,10 +819,11 @@ def customer():
 
         user_games = used_query.order_by(UserGame.purchase_date).all()
 
-        # Get genres for filter dropdown
+        # Optimized: Get distinct genres and platforms in single queries
         genres = [g[0] for g in db.session.query(Game.genre).distinct().all()]
+        platforms = [p[0] for p in db.session.query(Game.platform).distinct().all()]
 
-        # Get approved community games
+        # Optimized: Get approved community games with filters
         community_query = GameSuggestion.query.filter_by(status='approved')
 
         if search:
@@ -498,29 +837,56 @@ def customer():
 
         approved_suggestions = community_query.order_by(GameSuggestion.date_suggested.desc()).all()
 
-        # Load image filenames for suggestions
+        # Load image filenames for suggestions (keep as is for now)
         for suggestion in approved_suggestions:
             image_file = os.path.join('static', 'uploads', f'suggestion_{suggestion.id}.txt')
             if os.path.exists(image_file):
                 with open(image_file, 'r') as f:
                     suggestion.image = f.read().strip()
 
-        # Combine games for pagination (simplified)
-        total_games_count = official_query.count()
-        total_pages = (total_games_count + per_page - 1) // per_page
+        # Check if search was performed but no results found
+        search_performed = bool(search or platform_filter or genre_filter)
+        no_results = search_performed and not official_games and not user_games and not approved_suggestions
 
-        # Get unique platforms for filter dropdown
-        platforms = [p[0] for p in db.session.query(Game.platform).distinct().all()]
+        # If no results found, show all games instead of empty results
+        if no_results:
+            # Reset filters to show all games
+            search = ''
+            platform_filter = ''
+            genre_filter = ''
+
+            # Get all games without filters
+            official_query = Game.query
+            total_games_count = official_query.count()
+            total_pages = (total_games_count + per_page - 1) // per_page
+            official_games = official_query.order_by(Game.id).offset(offset).limit(per_page).all()
+
+            used_query = UserGame.query.filter_by(listed_for_sale=True).filter(UserGame.game_id.isnot(None)).join(Game)
+            user_games = used_query.order_by(UserGame.purchase_date).all()
+
+            community_query = GameSuggestion.query.filter_by(status='approved')
+            approved_suggestions = community_query.order_by(GameSuggestion.date_suggested.desc()).all()
+
+            # Load image filenames for suggestions
+            for suggestion in approved_suggestions:
+                image_file = os.path.join('static', 'uploads', f'suggestion_{suggestion.id}.txt')
+                if os.path.exists(image_file):
+                    with open(image_file, 'r') as f:
+                        suggestion.image = f.read().strip()
+
     except Exception as e:
         flash(f"Error loading games: {str(e)}", "error")
         official_games = []
         user_games = []
         approved_suggestions = []
         platforms = []
+        genres = []
         total_pages = 0
         page = 1
         user_balance = 0.0
-    return render_template("customer.html", games=official_games, user_games=user_games, approved_suggestions=approved_suggestions, platforms=platforms, search=search, platform_filter=platform_filter, genre_filter=genre_filter, page=page, total_pages=total_pages, user_balance=user_balance)
+        search_performed = False
+        no_results = False
+    return render_template("customer.html", games=official_games, user_games=user_games, approved_suggestions=approved_suggestions, platforms=platforms, genres=genres, search=search, platform_filter=platform_filter, genre_filter=genre_filter, page=page, total_pages=total_pages, user_balance=user_balance)
 
 # ---------- CUSTOMER: BUY GAME ----------
 @app.route("/buy/<int:game_id>")
@@ -540,12 +906,8 @@ def buy(game_id):
                 # Check if it's a community game
                 suggestion = GameSuggestion.query.get(game_id)
                 if suggestion and suggestion.status == 'approved':
-                    # For community games, no purchase record needed, just add to user games
-                    user_game = UserGame(username=session["username"], game_id=None, condition='new',
-                                       title=suggestion.title, platform=suggestion.platform, genre=suggestion.genre)
-                    db.session.add(user_game)
-                    db.session.commit()
-                    flash("Community game added to your library!", "success")
+                    # For free community games, redirect to confirmation page
+                    return redirect(url_for('confirm_purchase', game_id=game_id, condition='free'))
                 else:
                     flash("Game not found.", "error")
         except Exception as e:
@@ -563,24 +925,44 @@ def confirm_purchase(game_id):
 
     try:
         user = User.query.filter_by(username=session["username"]).first()
-        game = Game.query.get(game_id)
 
-        if not game:
-            flash("Game not found.", "error")
-            return redirect(url_for("customer"))
-
-        if condition == 'new':
-            if game.quantity <= 0:
-                flash("Game is out of stock.", "error")
+        if condition == 'free':
+            # Handle free community games
+            suggestion = GameSuggestion.query.get(game_id)
+            if not suggestion or suggestion.status != 'approved':
+                flash("Game not found.", "error")
                 return redirect(url_for("customer"))
-            price = game.price
+
+            # Create a mock game object for template compatibility
+            class MockGame:
+                def __init__(self, suggestion):
+                    self.id = suggestion.id
+                    self.title = suggestion.title
+                    self.platform = suggestion.platform
+                    self.genre = suggestion.genre
+                    self.image = f"static/uploads/{suggestion.image}" if suggestion.image else "static/logo.png"
+
+            game = MockGame(suggestion)
+            price = 0.0
         else:
-            # For used games, get from marketplace
-            user_game = UserGame.query.filter_by(game_id=game_id, listed_for_sale=True).first()
-            if not user_game:
-                flash("Game not found for sale.", "error")
-                return redirect(url_for("marketplace"))
-            price = user_game.sale_price
+            game = Game.query.get(game_id)
+
+            if not game:
+                flash("Game not found.", "error")
+                return redirect(url_for("customer"))
+
+            if condition == 'new':
+                if game.quantity <= 0:
+                    flash("Game is out of stock.", "error")
+                    return redirect(url_for("customer"))
+                price = game.price
+            else:
+                # For used games, get from marketplace
+                user_game = UserGame.query.filter_by(game_id=game_id, listed_for_sale=True).first()
+                if not user_game:
+                    flash("Game not found for sale.", "error")
+                    return redirect(url_for("marketplace"))
+                price = user_game.sale_price
 
         user_balance = user.balance if user else 0.0
 
@@ -600,64 +982,81 @@ def process_purchase(game_id):
 
     try:
         user = User.query.filter_by(username=session["username"]).first()
-        game = Game.query.get(game_id)
 
-        if not game:
-            flash("Game not found.", "error")
-            return redirect(url_for("customer"))
-
-        if condition == 'new':
-            if game.quantity <= 0:
-                flash("Game is out of stock.", "error")
+        if condition == 'free':
+            # Handle free community games
+            suggestion = GameSuggestion.query.get(game_id)
+            if not suggestion or suggestion.status != 'approved':
+                flash("Game not found.", "error")
                 return redirect(url_for("customer"))
-            price = game.price
-        else:
-            # For used games, get from marketplace
-            user_game = UserGame.query.filter_by(game_id=game_id, listed_for_sale=True).first()
-            if not user_game:
-                flash("Game not found for sale.", "error")
-                return redirect(url_for("marketplace"))
-            price = user_game.sale_price
 
-        # Check if user has sufficient balance
-        has_balance, current_balance = check_user_balance(session["username"], price)
-        if not has_balance:
-            flash(f"Insufficient balance. You need ${price:.2f} but only have ${current_balance:.2f}.", "error")
-            return redirect(url_for("confirm_purchase", game_id=game_id, condition=condition))
-
-        # Deduct balance
-        if not deduct_user_balance(session["username"], price):
-            flash("Error processing payment.", "error")
-            return redirect(url_for("confirm_purchase", game_id=game_id, condition=condition))
-
-        if condition == 'new':
-            # Create purchase record
-            purchase = Purchase(username=session["username"], game_id=game_id, price_paid=price)
-            db.session.add(purchase)
-
-            # Create user game entry
-            user_game = UserGame(username=session["username"], game_id=game_id, condition='new')
+            # For free games, no balance check needed
+            # Just add to user games
+            user_game = UserGame(username=session["username"], game_id=None, condition='new',
+                               title=suggestion.title, platform=suggestion.platform, genre=suggestion.genre)
             db.session.add(user_game)
-
-            # Decrease game quantity
-            game.quantity -= 1
+            db.session.commit()
+            flash("Community game added to your library!", "success")
+            return redirect(url_for("customer"))
         else:
-            # Used game purchase
-            seller_user_game = UserGame.query.filter_by(game_id=game_id, listed_for_sale=True).first()
+            game = Game.query.get(game_id)
 
-            # Create purchase record
-            purchase = Purchase(username=session["username"], game_id=game_id, condition='used', price_paid=price, seller_username=seller_user_game.username)
-            db.session.add(purchase)
+            if not game:
+                flash("Game not found.", "error")
+                return redirect(url_for("customer"))
 
-            # Transfer ownership
-            seller_user_game.username = session["username"]
-            seller_user_game.condition = 'used'
-            seller_user_game.listed_for_sale = False
-            seller_user_game.sale_price = None
-            seller_user_game.purchase_date = datetime.utcnow()
+            if condition == 'new':
+                if game.quantity <= 0:
+                    flash("Game is out of stock.", "error")
+                    return redirect(url_for("customer"))
+                price = game.price
+            else:
+                # For used games, get from marketplace
+                user_game = UserGame.query.filter_by(game_id=game_id, listed_for_sale=True).first()
+                if not user_game:
+                    flash("Game not found for sale.", "error")
+                    return redirect(url_for("marketplace"))
+                price = user_game.sale_price
 
-        db.session.commit()
-        flash("Game purchased successfully.", "success")
+            # Check if user has sufficient balance
+            has_balance, current_balance = check_user_balance(session["username"], price)
+            if not has_balance:
+                flash(f"Insufficient balance. You need ${price:.2f} but only have ${current_balance:.2f}.", "error")
+                return redirect(url_for("confirm_purchase", game_id=game_id, condition=condition))
+
+            # Deduct balance
+            if not deduct_user_balance(session["username"], price):
+                flash("Error processing payment.", "error")
+                return redirect(url_for("confirm_purchase", game_id=game_id, condition=condition))
+
+            if condition == 'new':
+                # Create purchase record
+                purchase = Purchase(username=session["username"], game_id=game_id, price_paid=price)
+                db.session.add(purchase)
+
+                # Create user game entry
+                user_game = UserGame(username=session["username"], game_id=game_id, condition='new')
+                db.session.add(user_game)
+
+                # Decrease game quantity
+                game.quantity -= 1
+            else:
+                # Used game purchase
+                seller_user_game = UserGame.query.filter_by(game_id=game_id, listed_for_sale=True).first()
+
+                # Create purchase record
+                purchase = Purchase(username=session["username"], game_id=game_id, condition='used', price_paid=price, seller_username=seller_user_game.username)
+                db.session.add(purchase)
+
+                # Transfer ownership
+                seller_user_game.username = session["username"]
+                seller_user_game.condition = 'used'
+                seller_user_game.listed_for_sale = False
+                seller_user_game.sale_price = None
+                seller_user_game.purchase_date = datetime.utcnow()
+
+            db.session.commit()
+            flash("Game purchased successfully.", "success")
 
     except Exception as e:
         db.session.rollback()
@@ -1057,11 +1456,111 @@ def forgot_password():
 
     return render_template("forgot_password.html", username=username, show_reset=False)
 
+# ---------- API ENDPOINTS FOR SEARCH AND CART ----------
+@app.route("/api/search")
+def api_search():
+    """API endpoint for real-time game search"""
+    query = request.args.get('q', '').strip()
+
+    if len(query) < 2:
+        return jsonify({'success': False, 'results': []})
+
+    try:
+        # Search in official games
+        games = Game.query.filter(Game.title.ilike(f"%{query}%")).limit(10).all()
+
+        results = []
+        for game in games:
+            results.append({
+                'id': game.id,
+                'title': game.title,
+                'platform': game.platform,
+                'genre': game.genre,
+                'price': float(game.price),
+                'image': f'/static/uploads/{game.image}' if game.image else '/static/logo.png'
+            })
+
+        return jsonify({'success': True, 'results': results})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route("/api/cart/add", methods=["POST"])
+def api_add_to_cart():
+    """API endpoint to add game to cart"""
+    if "username" not in session or session["role"] != "customer":
+        return jsonify({'success': False, 'message': 'Not logged in'})
+
+    try:
+        data = request.get_json()
+        game_id = data.get('game_id')
+
+        if not game_id:
+            return jsonify({'success': False, 'message': 'Game ID required'})
+
+        # Check if game exists and is available
+        game = Game.query.get(game_id)
+        if not game or game.quantity <= 0:
+            return jsonify({'success': False, 'message': 'Game not available'})
+
+        # Here you would typically add to a cart table
+        # For now, just return success
+        return jsonify({'success': True, 'message': 'Added to cart'})
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/api/cart/count")
+def api_cart_count():
+    """API endpoint to get cart item count"""
+    if "username" not in session or session["role"] != "customer":
+        return jsonify({'count': 0})
+
+    # Here you would typically query cart items
+    # For now, return 0
+    return jsonify({'count': 0})
+
+# ---------- HEALTH CHECK ENDPOINT ----------
+@app.route("/health")
+def health_check():
+    """Health check endpoint for monitoring"""
+    try:
+        # Check database connection
+        db.session.execute(text('SELECT 1'))
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.utcnow().isoformat(),
+            'database': 'connected'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
+
 # ---------- LOGOUT ----------
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
+@app.after_request
+def add_header(response):
+    """
+    Add headers to both force latest IE rendering engine or Chrome Frame,
+    and also to cache the rendered page for 10 minutes.
+    """
+    response.headers['X-UA-Compatible'] = 'IE=Edge,chrome=1'
+    # Enhanced caching headers for better performance
+    if request.endpoint in ['static']:
+        # Cache static files for 1 hour
+        response.headers['Cache-Control'] = 'public, max-age=3600'
+    else:
+        # Don't cache dynamic content
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
 
 if __name__ == "__main__":
     app.run(debug=True)
