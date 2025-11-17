@@ -1,78 +1,175 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <title>Edit Game - GameSystem Admin</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
-        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .error-text { color: red; font-size: 14px; margin-top: -5px; margin-bottom: 10px; }
-    </style>
-</head>
-<body>
-    <header class="header-nav">
-        <div class="logo">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
-            GameSystem Admin
-        </div>
-        <div class="nav-links">
-            <a href="{{ url_for('admin') }}"><i class="fas fa-arrow-left icon"></i>Back to Dashboard</a>
-            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
-        </div>
-    </header>
-    <main class="main-content">
-        <h1><i class="fas fa-edit icon"></i>Edit Game: {{ game.title }}</h1>
+{% extends "base.html" %}
 
-    {% set messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-            <div class="flash {{ category }}" role="alert" aria-live="assertive">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
+{% block title %}Edit Game - GameSystem Admin{% endblock %}
 
-    <section class="section">
-        <div class="card">
-            <h2><i class="fas fa-edit icon"></i>Edit Game Details</h2>
-            <form method="post" action="{{ url_for('edit_game', game_id=game.id) }}" enctype="multipart/form-data">
-        <input type="text" name="title" placeholder="Game Title" value="{{ game.title }}" required>
-        {% if errors.title %}<div class="error-text">{{ errors.title }}</div>{% endif %}
+{% block head %}
+<style>
+    .card form {
+        text-align: center;
+    }
+    .card form .form-group {
+        margin-bottom: 15px;
+        text-align: left;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .card form .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        text-align: left;
+    }
+    .card form .button-group {
+        text-align: center;
+        margin-top: 30px;
+    }
+    .btn.cancel {
+        padding: 8px 16px;
+        font-size: 14px;
+        margin-left: 10px;
+    }
+    .file-input-wrapper {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+    }
+    .file-input-wrapper input[type="file"] {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+    .file-input-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 15px;
+        border: 1px solid #555;
+        border-radius: 4px;
+        background: #2a2a2a;
+        color: #f0f0f0;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .file-input-label:hover {
+        border-color: #007bff;
+        background: #333;
+    }
+    .file-input-label i {
+        margin-right: 8px;
+    }
+    .file-name {
+        margin-top: 5px;
+        font-size: 14px;
+        color: #888;
+        text-align: left;
+    }
+</style>
+{% endblock %}
 
-        <select name="platform">
-            <option value="">Select Platform</option>
-            {% for platform_option in platforms %}
-                <option value="{{ platform_option }}" {% if game.platform == platform_option %}selected{% endif %}>{{ platform_option }}</option>
+{% block content %}
+<header class="header-nav">
+    <div class="logo">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
+        GameSystem Admin
+    </div>
+    <div class="nav-links">
+        <a href="{{ url_for('admin') }}"><i class="fas fa-arrow-left icon"></i>Back to Dashboard</a>
+        <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+    </div>
+</header>
+
+<main class="main-content">
+    <h1><i class="fas fa-edit icon"></i>Edit Game: {{ game.title }}</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
             {% endfor %}
-        </select>
-        {% if errors.platform %}<div class="error-text">{{ errors.platform }}</div>{% endif %}
+        {% endif %}
+    {% endwith %}
 
-        <select name="genre" required>
-            <option value="">Select Genre</option>
-            {% for genre in ['Action','Adventure','RPG','Strategy','Sports','Racing','Simulation','Puzzle','Horror','Fighting'] %}
-                <option value="{{ genre }}" {% if game.genre == genre %}selected{% endif %}>{{ genre }}</option>
-            {% endfor %}
-        </select>
-        {% if errors.genre %}<div class="error-text">{{ errors.genre }}</div>{% endif %}
+    <div class="card">
+        <h2><i class="fas fa-edit icon"></i>Edit Game Details</h2>
+        <form method="post" action="{{ url_for('edit_game', game_id=game.id) }}" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="title"><i class="fas fa-gamepad icon" aria-hidden="true"></i>Title *</label>
+                <input type="text" id="title" name="title" placeholder="Enter game title" value="{{ game.title }}" required maxlength="100" autocomplete="off">
+                {% if errors.title %}<div class="invalid-feedback">{{ errors.title }}</div>{% endif %}
+            </div>
 
-        <input type="number" name="quantity" placeholder="Quantity" value="{{ game.quantity }}" min="0" required>
-        {% if errors.quantity %}<div class="error-text">{{ errors.quantity }}</div>{% endif %}
+            <div class="form-group">
+                <label for="platform"><i class="fas fa-desktop icon" aria-hidden="true"></i>Platform *</label>
+                <input type="text" id="platform" name="platform" placeholder="e.g., PC, PlayStation, Xbox" value="{{ game.platform }}" required maxlength="50" autocomplete="off">
+                {% if errors.platform %}<div class="invalid-feedback">{{ errors.platform }}</div>{% endif %}
+            </div>
 
-        <input type="number" step="0.01" name="price" placeholder="Price (e.g., 59.99)" value="{{ game.price }}" min="0" required>
-        {% if errors.price %}<div class="error-text">{{ errors.price }}</div>{% endif %}
+            <div class="form-group">
+                <label for="genre"><i class="fas fa-tags icon" aria-hidden="true"></i>Genre *</label>
+                <select id="genre" name="genre" required>
+                    <option value="">Select Genre</option>
+                    <option value="Action" {% if game.genre == 'Action' %}selected{% endif %}>Action</option>
+                    <option value="Adventure" {% if game.genre == 'Adventure' %}selected{% endif %}>Adventure</option>
+                    <option value="RPG" {% if game.genre == 'RPG' %}selected{% endif %}>RPG</option>
+                    <option value="Strategy" {% if game.genre == 'Strategy' %}selected{% endif %}>Strategy</option>
+                    <option value="Simulation" {% if game.genre == 'Simulation' %}selected{% endif %}>Simulation</option>
+                    <option value="Sports" {% if game.genre == 'Sports' %}selected{% endif %}>Sports</option>
+                    <option value="Racing" {% if game.genre == 'Racing' %}selected{% endif %}>Racing</option>
+                    <option value="Puzzle" {% if game.genre == 'Puzzle' %}selected{% endif %}>Puzzle</option>
+                    <option value="Horror" {% if game.genre == 'Horror' %}selected{% endif %}>Horror</option>
+                    <option value="Other" {% if game.genre == 'Other' %}selected{% endif %}>Other</option>
+                </select>
+                {% if errors.genre %}<div class="invalid-feedback">{{ errors.genre }}</div>{% endif %}
+            </div>
 
-        <p>Current Image: <img src="{{ url_for('static', filename='uploads/' + game.image) }}" alt="Current Game Image" style="height: 100px; vertical-align: middle;"></p>
-        <input type="file" name="image" accept="image/*">
-        <div class="error-text">Leave empty to keep current image. Supported formats: PNG, JPG, JPEG, GIF, WebP.</div>
-        {% if errors.image %}<div class="error-text">{{ errors.image }}</div>{% endif %}
+            <div class="form-group">
+                <label for="quantity"><i class="fas fa-boxes icon" aria-hidden="true"></i>Quantity *</label>
+                <input type="number" id="quantity" name="quantity" placeholder="Quantity" value="{{ game.quantity }}" min="0" required>
+                {% if errors.quantity %}<div class="invalid-feedback">{{ errors.quantity }}</div>{% endif %}
+            </div>
 
-        <label><input type="checkbox" name="confirm" required> Confirm game update</label>
+            <div class="form-group">
+                <label for="price"><i class="fas fa-dollar-sign icon" aria-hidden="true"></i>Price *</label>
+                <input type="number" id="price" step="0.01" name="price" placeholder="Price (e.g., 59.99)" value="{{ game.price }}" min="0" required>
+                {% if errors.price %}<div class="invalid-feedback">{{ errors.price }}</div>{% endif %}
+            </div>
 
-                <button type="submit"><i class="fas fa-save icon"></i>Update Game</button>
-            </form>
-        </div>
-    </section>
-    </main>
-</body>
-</html>
+            <div class="form-group">
+                <label for="image"><i class="fas fa-image icon" aria-hidden="true"></i>Game Cover Image (Optional)</label>
+                <div class="current-image">
+                    <p><strong>Current Image:</strong></p>
+                    <img src="{{ url_for('static', filename='uploads/' + game.image) }}" alt="Current Game Image" style="height: 100px; vertical-align: middle;">
+                </div>
+                <div class="file-input-wrapper">
+                    <input type="file" id="image" name="image" accept="image/*">
+                    <label for="image" class="file-input-label">
+                        <i class="fas fa-upload"></i> Choose a file
+                    </label>
+                </div>
+                <div id="file-name" class="file-name">No file chosen</div>
+                <small>Leave empty to keep current image. Supported formats: PNG, JPG, JPEG, GIF, WebP.</small>
+                {% if errors.image %}<div class="invalid-feedback">{{ errors.image }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+                <label><input type="checkbox" name="confirm" required> Confirm game update</label>
+            </div>
+
+            <button type="submit"><i class="fas fa-save icon" aria-hidden="true"></i>Update Game</button>
+            <a href="{{ url_for('admin') }}" class="btn cancel">Cancel</a>
+        </form>
+    </div>
+</main>
+
+<script>
+    // File input handling
+    document.getElementById('image').addEventListener('change', function(e) {
+        const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+        document.getElementById('file-name').textContent = fileName;
+    });
+</script>
+{% endblock %}

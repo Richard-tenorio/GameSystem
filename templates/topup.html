@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Top Up Balance - GameSystem</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Font Awesome removed for offline compatibility -->
+</head>
+<body>
+    <header class="header-nav">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
+            GameSystem
+        </div>
+        <div class="nav-links">
+            <span class="balance-display">Balance: ${{ "%.2f"|format(user_balance) }}</span>
+            <a href="{{ url_for('customer') }}">Back to Games</a>
+            <a href="{{ url_for('profile') }}">Profile</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')">Logout</a>
+        </div>
+    </header>
+
+    <h1>Top Up Your Balance</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="box">
+        <h2>Add Funds to Your Account</h2>
+        <p>Current Balance: <strong>₱{{ "%.2f"|format(user_balance) }}</strong></p>
+
+        <form method="post">
+            <label for="amount">Top-up Amount (₱):</label>
+            <input type="number" id="amount" name="amount" step="0.01" min="0.01" max="50000" required placeholder="Enter amount">
+
+            <div style="margin-top: 20px;">
+                <p><strong>Quick Amounts:</strong></p>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="button" onclick="setAmount(100)" class="btn">+ ₱100</button>
+                    <button type="button" onclick="setAmount(250)" class="btn">+ ₱250</button>
+                    <button type="button" onclick="setAmount(500)" class="btn">+ ₱500</button>
+                    <button type="button" onclick="setAmount(1000)" class="btn">+ ₱1000</button>
+                    <button type="button" onclick="setAmount(2500)" class="btn">+ ₱2500</button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Top Up Balance</button>
+        </form>
+
+        <div style="margin-top: 30px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+            <h3>Payment Information</h3>
+            <ul>
+                <li>Minimum top-up: ₱0.01</li>
+                <li>Maximum top-up: ₱50,000.00</li>
+                <li>All amounts are in Philippine Pesos (PHP)</li>
+                <li>Funds are added instantly to your account</li>
+                <li>Use your balance to purchase games from our marketplace</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function setAmount(amount) {
+            document.getElementById('amount').value = amount;
+        }
+    </script>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

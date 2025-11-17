@@ -1,77 +1,199 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <title>Edit Suggestion - GameSystem Admin</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
-        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .error-text { color: red; font-size: 14px; margin-top: -5px; margin-bottom: 10px; }
-    </style>
-</head>
-<body>
-    <header class="header-nav">
-        <div class="logo">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
-            GameSystem Admin
-        </div>
-        <div class="nav-links">
-            <a href="{{ url_for('admin') }}"><i class="fas fa-arrow-left icon"></i>Back to Dashboard</a>
-            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
-        </div>
-    </header>
-    <main class="main-content">
-        <h1><i class="fas fa-edit icon"></i>Edit Community Game: {{ suggestion.title }}</h1>
+{% extends "base.html" %}
 
-    {% set messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-            <div class="flash {{ category }}" role="alert" aria-live="assertive">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
+{% block title %}Edit Suggestion - GameSystem Admin{% endblock %}
 
-    <section class="section">
-        <div class="card">
-            <h2><i class="fas fa-edit icon"></i>Edit Suggestion Details</h2>
-            <form method="post" action="{{ url_for('edit_suggestion', suggestion_id=suggestion.id) }}" enctype="multipart/form-data">
-        <input type="text" name="title" placeholder="Game Title" value="{{ suggestion.title }}" required>
-        {% if errors.title %}<div class="error-text">{{ errors.title }}</div>{% endif %}
+{% block head %}
+<style>
+    .card form {
+        text-align: center;
+    }
+    .card form .form-group {
+        margin-bottom: 15px;
+        text-align: left;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .card form .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        text-align: left;
+    }
+    .card form .button-group {
+        text-align: center;
+        margin-top: 30px;
+    }
+    .btn.cancel {
+        padding: 8px 16px;
+        font-size: 14px;
+        margin-left: 10px;
+    }
+    .file-input-wrapper {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+    }
+    .file-input-wrapper input[type="file"] {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+    .file-input-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 15px;
+        border: 1px solid #555;
+        border-radius: 4px;
+        background: #2a2a2a;
+        color: #f0f0f0;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .file-input-label:hover {
+        border-color: #007bff;
+        background: #333;
+    }
+    .file-input-label i {
+        margin-right: 8px;
+    }
+    .file-name {
+        margin-top: 5px;
+        font-size: 14px;
+        color: #888;
+        text-align: left;
+    }
+</style>
+{% endblock %}
 
-        <select name="platform">
-            <option value="">Select Platform</option>
-            {% for platform_option in platforms %}
-                <option value="{{ platform_option }}" {% if suggestion.platform == platform_option %}selected{% endif %}>{{ platform_option }}</option>
+{% block content %}
+<header class="header-nav">
+    <div class="logo">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
+        GameSystem Admin
+    </div>
+    <div class="nav-links">
+        <a href="{{ url_for('admin') }}"><i class="fas fa-arrow-left icon"></i>Back to Dashboard</a>
+        <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+    </div>
+</header>
+
+<main class="main-content">
+    <h1><i class="fas fa-edit icon"></i>Edit Community Game: {{ suggestion.title }}</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
             {% endfor %}
-        </select>
-        {% if errors.platform %}<div class="error-text">{{ errors.platform }}</div>{% endif %}
-
-        <select name="genre" required>
-            <option value="">Select Genre</option>
-            {% for genre in ['Action','Adventure','RPG','Strategy','Sports','Racing','Simulation','Puzzle','Horror','Fighting'] %}
-                <option value="{{ genre }}" {% if suggestion.genre == genre %}selected{% endif %}>{{ genre }}</option>
-            {% endfor %}
-        </select>
-        {% if errors.genre %}<div class="error-text">{{ errors.genre }}</div>{% endif %}
-
-        <textarea name="description" placeholder="Game Description" rows="4" required>{{ suggestion.description }}</textarea>
-        {% if errors.description %}<div class="error-text">{{ errors.description }}</div>{% endif %}
-
-        {% if suggestion.image %}
-        <p>Current Image: <img src="{{ url_for('static', filename='uploads/' + suggestion.image) }}" alt="Current Suggestion Image" style="height: 100px; vertical-align: middle;"></p>
         {% endif %}
-        <input type="file" name="image" accept="image/*">
-        <div class="error-text">Leave empty to keep current image. Supported formats: PNG, JPG, JPEG, GIF, WebP.</div>
-        {% if errors.image %}<div class="error-text">{{ errors.image }}</div>{% endif %}
+    {% endwith %}
 
-        <label><input type="checkbox" name="confirm" required> Confirm suggestion update</label>
+    <div class="card">
+        <h2><i class="fas fa-edit icon"></i>Edit Suggestion Details</h2>
+        <form method="post" action="{{ url_for('edit_suggestion', suggestion_id=suggestion.id) }}" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="title"><i class="fas fa-gamepad icon" aria-hidden="true"></i>Title *</label>
+                <input type="text" id="title" name="title" placeholder="Enter game title" value="{{ suggestion.title }}" required maxlength="100" autocomplete="off">
+                {% if errors.title %}<div class="invalid-feedback">{{ errors.title }}</div>{% endif %}
+            </div>
 
-                <button type="submit"><i class="fas fa-save icon"></i>Update Suggestion</button>
-            </form>
-        </div>
-    </section>
-    </main>
-</body>
-</html>
+            <div class="form-group">
+                <label for="platform"><i class="fas fa-desktop icon" aria-hidden="true"></i>Platform *</label>
+                <input type="text" id="platform" name="platform" placeholder="e.g., PC, PlayStation, Xbox" value="{{ suggestion.platform }}" required maxlength="50" autocomplete="off">
+                {% if errors.platform %}<div class="invalid-feedback">{{ errors.platform }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="genre"><i class="fas fa-tags icon" aria-hidden="true"></i>Genre *</label>
+                <select id="genre" name="genre" required>
+                    <option value="">Select Genre</option>
+                    <option value="Action" {% if suggestion.genre == 'Action' %}selected{% endif %}>Action</option>
+                    <option value="Adventure" {% if suggestion.genre == 'Adventure' %}selected{% endif %}>Adventure</option>
+                    <option value="RPG" {% if suggestion.genre == 'RPG' %}selected{% endif %}>RPG</option>
+                    <option value="Strategy" {% if suggestion.genre == 'Strategy' %}selected{% endif %}>Strategy</option>
+                    <option value="Simulation" {% if suggestion.genre == 'Simulation' %}selected{% endif %}>Simulation</option>
+                    <option value="Sports" {% if suggestion.genre == 'Sports' %}selected{% endif %}>Sports</option>
+                    <option value="Racing" {% if suggestion.genre == 'Racing' %}selected{% endif %}>Racing</option>
+                    <option value="Puzzle" {% if suggestion.genre == 'Puzzle' %}selected{% endif %}>Puzzle</option>
+                    <option value="Horror" {% if suggestion.genre == 'Horror' %}selected{% endif %}>Horror</option>
+                    <option value="Other" {% if suggestion.genre == 'Other' %}selected{% endif %}>Other</option>
+                </select>
+                {% if errors.genre %}<div class="invalid-feedback">{{ errors.genre }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="description"><i class="fas fa-comment icon" aria-hidden="true"></i>Description *</label>
+                <textarea id="description" name="description" placeholder="Describe the game or any additional details..." rows="4" required>{{ suggestion.description }}</textarea>
+                {% if errors.description %}<div class="invalid-feedback">{{ errors.description }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="image"><i class="fas fa-image icon" aria-hidden="true"></i>Game Cover Image (Optional)</label>
+                {% if suggestion.image %}
+                <div class="current-image">
+                    <p><strong>Current Image:</strong></p>
+                    <img src="{{ url_for('static', filename='uploads/' + suggestion.image) }}" alt="Current Suggestion Image" style="height: 100px; vertical-align: middle;">
+                </div>
+                {% endif %}
+                <div class="file-input-wrapper">
+                    <input type="file" id="image" name="image" accept="image/*">
+                    <label for="image" class="file-input-label">
+                        <i class="fas fa-upload"></i> Choose a file
+                    </label>
+                </div>
+                <div id="file-name" class="file-name">No file chosen</div>
+                <small>Leave empty to keep current image. Supported formats: PNG, JPG, JPEG, GIF, WebP.</small>
+                {% if errors.image %}<div class="invalid-feedback">{{ errors.image }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="installation_instructions"><i class="fas fa-list icon" aria-hidden="true"></i>Installation Instructions *</label>
+                <textarea id="installation_instructions" name="installation_instructions" placeholder="Provide step-by-step installation instructions for the game..." rows="4" required>{{ suggestion.installation_instructions }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="installation_file"><i class="fas fa-file-upload icon" aria-hidden="true"></i>Installation File (Optional)</label>
+                {% if suggestion.installation_file %}
+                <div class="current-file">
+                    <p><strong>Current File:</strong> {{ suggestion.installation_file }}</p>
+                </div>
+                {% endif %}
+                <div class="file-input-wrapper">
+                    <input type="file" id="installation_file" name="installation_file" accept=".txt,.exe,.msi,.zip,.rar,.7z,.bat,.cmd">
+                    <label for="installation_file" class="file-input-label">
+                        <i class="fas fa-folder-open"></i> Choose installation file
+                    </label>
+                </div>
+                <div id="install-file-name" class="file-name">No file chosen</div>
+                <small>Leave empty to keep current file. Supported formats: TXT, EXE, MSI, ZIP, RAR, 7Z, BAT, CMD.</small>
+            </div>
+
+            <div class="form-group">
+                <label><input type="checkbox" name="confirm" required> Confirm suggestion update</label>
+            </div>
+
+            <div class="button-group">
+                <button type="submit" class="btn"><i class="fas fa-save icon"></i>Update Suggestion</button>
+            </div>
+        </form>
+    </div>
+</main>
+
+<script>
+    // File input handling
+    document.getElementById('image').addEventListener('change', function(e) {
+        const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+        document.getElementById('file-name').textContent = fileName;
+    });
+
+    document.getElementById('installation_file').addEventListener('change', function(e) {
+        const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+        document.getElementById('install-file-name').textContent = fileName;
+    });
+</script>
+{% endblock %}

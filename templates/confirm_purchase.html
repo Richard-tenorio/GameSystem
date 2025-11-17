@@ -64,7 +64,7 @@
         }
         .action-buttons {
             display: flex;
-            gap: 10px;
+            gap: 15px;
             justify-content: center;
             margin-top: 20px;
         }
@@ -74,11 +74,15 @@
             border-radius: 8px;
             cursor: pointer;
             text-decoration: none;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
             font-size: 16px;
             font-weight: 600;
             transition: all 0.3s ease;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            min-width: 140px;
         }
         .btn-confirm {
             background: linear-gradient(135deg, #4caf50, #45a049);
@@ -107,7 +111,7 @@
             GameSystem
         </div>
         <div class="nav-links">
-            <span class="balance-display">Balance: ${{ "%.2f"|format(user_balance) }}</span>
+            <span class="balance-display">Balance: ₱{{ "%.2f"|format(user_balance) }}</span>
             <a href="{{ url_for('customer') }}"><i class="fas fa-arrow-left icon"></i>Back to Browse</a>
             <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
         </div>
@@ -125,7 +129,7 @@
 
         <div class="confirmation-card">
             <div class="game-details">
-                <img src="{{ game.image }}" alt="{{ game.title }}" class="game-image">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo" class="game-image">
                 <div class="game-info">
                     <h3>{{ game.title }}</h3>
                     <p><strong>Platform:</strong> {{ game.platform }}</p>
@@ -135,15 +139,15 @@
             </div>
 
             <div class="balance-info">
-                <p><strong>Your Current Balance:</strong> ${{ "%.2f"|format(user_balance) }}</p>
+                <p><strong>Your Current Balance:</strong> ₱{{ "%.2f"|format(user_balance) }}</p>
             </div>
 
             <div class="price-summary">
                 <h4>Purchase Summary</h4>
-                <p><strong>Price:</strong> ${{ "%.2f"|format(price) }}</p>
-                <p class="total-price"><strong>Total: ${{ "%.2f"|format(price) }}</strong></p>
+                <p><strong>Price:</strong> ₱{{ "%.2f"|format(price) }}</p>
+                <p class="total-price"><strong>Total: ₱{{ "%.2f"|format(price) }}</strong></p>
                 {% if user_balance < price %}
-                    <p style="color: red;"><strong>Insufficient Balance!</strong> You need ${{ "%.2f"|format(price - user_balance) }} more credits.</p>
+                    <p style="color: red;"><strong>Insufficient Balance!</strong> You need ₱{{ "%.2f"|format(price - user_balance) }} more credits.</p>
                 {% endif %}
             </div>
 

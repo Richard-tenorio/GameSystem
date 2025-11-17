@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Game Suggestion - GameSystem{% endblock %}
+
+{% block content %}
+<header class="header-nav">
+    <div class="logo">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
+        GameSystem
+    </div>
+    <div class="nav-links">
+        <a href="{{ url_for('customer') }}"><i class="fas fa-gamepad icon"></i>Browse Games</a>
+        <a href="{{ url_for('library') }}"><i class="fas fa-book icon"></i>Library</a>
+        <a href="{{ url_for('profile') }}"><i class="fas fa-user icon"></i>Profile</a>
+        <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+    </div>
+</header>
+
+<main class="main-content">
+    <h1>Edit Game Suggestion</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="title">Game Title *</label>
+                <input type="text" id="title" name="title" value="{{ suggestion.title }}" required maxlength="100">
+            </div>
+
+            <div class="form-group">
+                <label for="platform">Platform *</label>
+                <select id="platform" name="platform" required>
+                    <option value="">Select Platform</option>
+                    {% for platform_option in platforms %}
+                    <option value="{{ platform_option }}" {% if suggestion.platform == platform_option %}selected{% endif %}>{{ platform_option }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="genre">Genre *</label>
+                <input type="text" id="genre" name="genre" value="{{ suggestion.genre }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description">{{ suggestion.description }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="installation_instructions">Installation Instructions *</label>
+                <textarea id="installation_instructions" name="installation_instructions" required>{{ suggestion.installation_instructions }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="image">Game Image (Optional)</label>
+                <input type="file" id="image" name="image" accept="image/*" class="file-input">
+                {% if suggestion.image %}
+                <div class="current-image">
+                    <p><strong>Current Image:</strong></p>
+                    <img src="static/uploads/{{ suggestion.image }}" alt="Current game image">
+                </div>
+                {% endif %}
+                <small>Leave empty to keep current image. Accepted formats: PNG, JPG, JPEG, GIF, WebP</small>
+            </div>
+
+            <div class="form-group">
+                <label for="installation_file">Installation File (Optional)</label>
+                <input type="file" id="installation_file" name="installation_file" class="file-input">
+                {% if suggestion.installation_file %}
+                <div class="current-file">
+                    <p><strong>Current File:</strong> {{ suggestion.installation_file }}</p>
+                </div>
+                {% endif %}
+                <small>Leave empty to keep current file. Accepted formats: TXT, EXE, MSI, ZIP, RAR, 7Z, BAT, CMD</small>
+            </div>
+
+            <div class="button-group">
+                <button type="submit" class="btn">Update Suggestion</button>
+                <a href="{{ url_for('library') }}" class="btn cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</main>
+{% endblock %}

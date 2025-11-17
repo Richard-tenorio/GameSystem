@@ -32,6 +32,39 @@
             white-space: nowrap;
             border: 0;
         }
+        .box form {
+            text-align: center;
+        }
+        .box form div {
+            margin-bottom: 8px;
+        }
+        .box form div label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            text-align: left;
+        }
+        .box form button {
+            margin: 20px auto 0;
+            display: block;
+            font-weight: bold;
+        }
+        .box form input {
+            width: 100%;
+            max-width: 400px;
+            padding: 10px 15px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #2a2a2a;
+            color: #f0f0f0;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .box form input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -51,15 +84,13 @@
         <form method="POST" aria-labelledby="login-heading" role="form">
             <div>
                 <label for="username"><i class="fas fa-user icon" aria-hidden="true"></i>Username:</label>
-                <input type="text" id="username" name="username" placeholder="Enter your username" required autocomplete="username" aria-describedby="username-help">
-                <div id="username-help" class="sr-only">Enter your username to log in</div>
-            </div><br>
+                <input type="text" id="username" name="username" placeholder="Enter your username" required autocomplete="username">
+            </div>
 
             <div>
                 <label for="password"><i class="fas fa-lock icon" aria-hidden="true"></i>Password:</label>
-                <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password" aria-describedby="password-help">
-                <div id="password-help" class="sr-only">Enter your password to log in</div>
-            </div><br>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+            </div>
 
             <button type="submit"><i class="fas fa-sign-in-alt icon" aria-hidden="true"></i>Login</button>
         </form>

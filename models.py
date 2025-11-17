@@ -29,7 +29,7 @@ class Game(db.Model):
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False, default=0.0)
     genre = db.Column(db.String(50), nullable=True, index=True)  # Added index for genre filtering
-    image = db.Column(db.String(255), nullable=True, default='https://via.placeholder.com/200x300?text=No+Image')
+    image = db.Column(db.String(255), nullable=True, default=None)
 
 class Purchase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -70,6 +70,9 @@ class GameSuggestion(db.Model):
     platform = db.Column(db.String(50), nullable=False, index=True)  # Added index for platform filtering
     genre = db.Column(db.String(50), nullable=True, index=True)  # Added index for genre filtering
     description = db.Column(db.Text, nullable=True)
+    installation_instructions = db.Column(db.Text, nullable=False)  # Required installation instructions
+    installation_file = db.Column(db.String(255), nullable=True, default=None)  # Optional installation file
     suggested_by = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False, index=True)  # Added index for user queries
     status = db.Column(db.String(20), nullable=False, default='pending', index=True)  # Added index for status filtering
     date_suggested = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)  # Added index for date sorting
+    image = db.Column(db.String(255), nullable=True, default=None)  # Store image filename for suggestions

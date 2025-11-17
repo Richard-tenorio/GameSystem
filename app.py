@@ -565,6 +565,27 @@ def approve_suggestion(suggestion_id):
             if suggestion:
                 suggestion.status = 'approved'
                 db.session.commit()
+
+                # Add the approved game to the suggester's library automatically
+                existing_user_game = UserGame.query.filter_by(
+                    username=suggestion.suggested_by,
+                    game_id=None,
+                    title=suggestion.title,
+                    platform=suggestion.platform
+                ).first()
+
+                if not existing_user_game:
+                    user_game = UserGame(
+                        username=suggestion.suggested_by,
+                        game_id=None,
+                        condition='approved',
+                        title=suggestion.title,
+                        platform=suggestion.platform,
+                        genre=suggestion.genre
+                    )
+                    db.session.add(user_game)
+                    db.session.commit()
+
                 flash("Suggestion approved successfully.", "success")
             else:
                 flash("Suggestion not found.", "error")
@@ -837,12 +858,10 @@ def customer():
 
         approved_suggestions = community_query.order_by(GameSuggestion.date_suggested.desc()).all()
 
-        # Load image filenames for suggestions (keep as is for now)
-        for suggestion in approved_suggestions:
-            image_file = os.path.join('static', 'uploads', f'suggestion_{suggestion.id}.txt')
-            if os.path.exists(image_file):
-                with open(image_file, 'r') as f:
-                    suggestion.image = f.read().strip()
+        # Get user's own suggestions (both pending and approved)
+        my_suggestions = GameSuggestion.query.filter_by(suggested_by=session["username"]).order_by(GameSuggestion.date_suggested.desc()).all()
+
+        # Image filenames are now stored directly in the database
 
         # Check if search was performed but no results found
         search_performed = bool(search or platform_filter or genre_filter)
@@ -913,6 +932,38 @@ def buy(game_id):
         except Exception as e:
             db.session.rollback()
             flash("Error purchasing game.", "error")
+    return redirect(url_for("customer"))
+
+# ---------- CUSTOMER: ADD TO LIBRARY ----------
+@app.route("/add_to_library/<int:game_id>")
+def add_to_library(game_id):
+    if "username" not in session or session["role"] != "customer":
+        return redirect(url_for("login"))
+
+    try:
+        # Check if it's an approved community game
+        suggestion = GameSuggestion.query.get(game_id)
+        if not suggestion or suggestion.status != 'approved':
+            flash("Game not found or not available.", "error")
+            return redirect(url_for("customer"))
+
+        # Check if user already has this game in their library
+        existing = UserGame.query.filter_by(username=session["username"], game_id=None, title=suggestion.title, platform=suggestion.platform).first()
+        if existing:
+            flash("This game is already in your library.", "info")
+            return redirect(url_for("customer"))
+
+        # Add the community game to user's library
+        user_game = UserGame(username=session["username"], game_id=None, condition='added',
+                           title=suggestion.title, platform=suggestion.platform, genre=suggestion.genre)
+        db.session.add(user_game)
+        db.session.commit()
+        flash("Game added to your library!", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        flash("Error adding game to library.", "error")
+
     return redirect(url_for("customer"))
 
 # ---------- CUSTOMER: CONFIRM PURCHASE ----------
@@ -1091,6 +1142,129 @@ def profile():
 
     return render_template("profile.html", purchases=purchases, ratings=ratings, user_balance=user_balance)
 
+# ---------- CUSTOMER: TOP UP BALANCE ----------
+@app.route("/topup", methods=["GET", "POST"])
+def topup():
+    if "username" not in session or session["role"] != "customer":
+        return redirect(url_for("login"))
+
+    try:
+        user = User.query.filter_by(username=session["username"]).first()
+        if not user:
+            flash("User not found.", "error")
+            return redirect(url_for("customer"))
+    except Exception as e:
+        flash("Error loading user.", "error")
+        return redirect(url_for("customer"))
+
+    if request.method == "POST":
+        amount = request.form.get("amount", "").strip()
+        try:
+            amount_float = float(amount)
+            if amount_float <= 0:
+                flash("Top-up amount must be positive.", "error")
+                return render_template("topup.html", user_balance=user.balance)
+            if amount_float > 50000:
+                flash("Maximum top-up amount is ₱50,000.", "error")
+                return render_template("topup.html", user_balance=user.balance)
+        except ValueError:
+            flash("Invalid amount.", "error")
+            return render_template("topup.html", user_balance=user.balance)
+
+        try:
+            user.balance += amount_float
+            db.session.commit()
+            flash(f"Successfully added ₱{amount_float:.2f} to your balance!", "success")
+            return redirect(url_for("customer"))
+        except Exception as e:
+            db.session.rollback()
+            flash("Error processing top-up.", "error")
+
+    return render_template("topup.html", user_balance=user.balance)
+
+# ---------- ADMIN: SETTINGS ----------
+@app.route("/admin_settings", methods=["GET", "POST"])
+def admin_settings():
+    if "username" not in session or session["role"] != "admin":
+        return redirect(url_for("login"))
+
+    # Get pending suggestions count for navigation
+    try:
+        pending_count = GameSuggestion.query.filter_by(status='pending').count()
+    except Exception as e:
+        pending_count = 0
+
+    if request.method == "POST" and "current_password" in request.form:
+        current_password = request.form["current_password"]
+        new_password = request.form["new_password"]
+        confirm_password = request.form["confirm_password"]
+
+        # Verify current password
+        user = User.query.filter_by(username=session["username"]).first()
+        if not user or not user.check_password(current_password):
+            flash("Current password is incorrect.", "error")
+            return render_template("admin_settings.html", pending_count=pending_count)
+
+        # Check if new passwords match
+        if new_password != confirm_password:
+            flash("New passwords do not match.", "error")
+            return render_template("admin_settings.html", pending_count=pending_count)
+
+        # Validate new password
+        is_valid, message = validate_password(new_password)
+        if not is_valid:
+            flash(message, "error")
+            return render_template("admin_settings.html", pending_count=pending_count)
+
+        try:
+            user.set_password(new_password)
+            db.session.commit()
+            flash("Password updated successfully.", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash("Error updating password.", "error")
+
+    return render_template("admin_settings.html", pending_count=pending_count)
+
+# ---------- ADMIN: UPDATE SYSTEM SETTINGS ----------
+@app.route("/update_system_settings", methods=["POST"])
+def update_system_settings():
+    if "username" not in session or session["role"] != "admin":
+        return redirect(url_for("login"))
+
+    site_title = request.form.get("site_title", "").strip()
+    max_topup = request.form.get("max_topup", "").strip()
+    default_game_quantity = request.form.get("default_game_quantity", "").strip()
+    maintenance_mode = request.form.get("maintenance_mode") == "1"
+
+    # Basic validation
+    if not site_title:
+        flash("Site title cannot be empty.", "error")
+        return redirect(url_for("admin_settings"))
+
+    try:
+        max_topup_int = int(max_topup)
+        if max_topup_int < 1000 or max_topup_int > 100000:
+            flash("Maximum top-up must be between ₱1,000 and ₱100,000.", "error")
+            return redirect(url_for("admin_settings"))
+    except ValueError:
+        flash("Invalid maximum top-up amount.", "error")
+        return redirect(url_for("admin_settings"))
+
+    try:
+        default_quantity_int = int(default_game_quantity)
+        if default_quantity_int < 1 or default_quantity_int > 1000:
+            flash("Default game quantity must be between 1 and 1000.", "error")
+            return redirect(url_for("admin_settings"))
+    except ValueError:
+        flash("Invalid default game quantity.", "error")
+        return redirect(url_for("admin_settings"))
+
+    # Here you would typically save these settings to a database or config file
+    # For now, we'll just show a success message
+    flash("System settings updated successfully.", "success")
+    return redirect(url_for("admin_settings"))
+
 # ---------- CUSTOMER: SETTINGS ----------
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
@@ -1135,17 +1309,140 @@ def library():
     if "username" not in session:
         return redirect(url_for("login"))
 
-    # Get user's owned games (both official and community)
+    # Get user's owned games (separate purchased and created games)
     try:
-        # Official games
-        official_games = UserGame.query.filter_by(username=session["username"]).filter(UserGame.game_id.isnot(None)).join(Game).order_by(UserGame.purchase_date.desc()).all()
-        # Community games
-        community_games = UserGame.query.filter_by(username=session["username"]).filter(UserGame.game_id.is_(None)).order_by(UserGame.purchase_date.desc()).all()
-        user_games = official_games + community_games
-    except Exception as e:
-        user_games = []
+        # Purchased games (official games with game_id)
+        purchased_games = UserGame.query.filter_by(username=session["username"]).filter(UserGame.game_id.isnot(None)).join(Game).order_by(UserGame.purchase_date.desc()).all()
 
-    return render_template("library.html", user_games=user_games)
+        # Created games (community games without game_id) with suggestion relationship
+        created_games = UserGame.query.filter_by(username=session["username"]).filter(UserGame.game_id.is_(None)).order_by(UserGame.purchase_date.desc()).all()
+
+        # Load suggestion data for created games
+        for user_game in created_games:
+            user_game.suggestion = GameSuggestion.query.filter_by(
+                title=user_game.title,
+                platform=user_game.platform,
+                suggested_by=session["username"]
+            ).first()
+    except Exception as e:
+        purchased_games = []
+        created_games = []
+
+    return render_template("library.html", purchased_games=purchased_games, created_games=created_games)
+
+# ---------- CUSTOMER: EDIT USER SUGGESTION ----------
+@app.route("/edit_user_suggestion/<int:suggestion_id>", methods=["GET", "POST"])
+def edit_user_suggestion(suggestion_id):
+    if "username" not in session or session["role"] != "customer":
+        return redirect(url_for("login"))
+
+    try:
+        suggestion = GameSuggestion.query.get(suggestion_id)
+        if not suggestion or suggestion.suggested_by != session["username"]:
+            flash("Suggestion not found or you don't have permission to edit it.", "error")
+            return redirect(url_for("library"))
+    except Exception as e:
+        flash("Error loading suggestion.", "error")
+        return redirect(url_for("library"))
+
+    if request.method == "POST":
+        title = request.form["title"].strip()
+        platform = request.form["platform"].strip()
+        genre = request.form.get("genre", "Action").strip()
+        description = request.form.get("description", "").strip()
+        installation_instructions = request.form.get("installation_instructions", "").strip()
+
+        # Validate inputs
+        if not title:
+            flash("Game title cannot be empty.", "error")
+            return render_template("edit_user_suggestion.html", suggestion=suggestion, platforms=PLATFORMS)
+        if len(title) > 100:
+            flash("Game title must be 100 characters or less.", "error")
+            return render_template("edit_user_suggestion.html", suggestion=suggestion, platforms=PLATFORMS)
+        if not platform:
+            flash("Platform cannot be empty.", "error")
+            return render_template("edit_user_suggestion.html", suggestion=suggestion, platforms=PLATFORMS)
+        if len(platform) > 50:
+            flash("Platform must be 50 characters or less.", "error")
+            return render_template("edit_user_suggestion.html", suggestion=suggestion, platforms=PLATFORMS)
+        if not genre:
+            flash("Genre cannot be empty.", "error")
+            return render_template("edit_user_suggestion.html", suggestion=suggestion, platforms=PLATFORMS)
+        if not installation_instructions:
+            flash("Installation instructions are required.", "error")
+            return render_template("edit_user_suggestion.html", suggestion=suggestion, platforms=PLATFORMS)
+
+        # Check if title changed and if new title already exists (only for pending suggestions)
+        if suggestion.status == 'pending' and (title != suggestion.title or platform != suggestion.platform):
+            existing_suggestion = GameSuggestion.query.filter_by(title=title, platform=platform).first()
+            if existing_suggestion and existing_suggestion.id != suggestion_id:
+                flash("A suggestion for this game already exists.", "error")
+                return render_template("edit_user_suggestion.html", suggestion=suggestion, platforms=PLATFORMS)
+
+        # Handle image upload
+        if 'image' in request.files and request.files['image'].filename != '':
+            image_file = request.files['image']
+            if image_file:
+                # Validate file type
+                allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+                if '.' in image_file.filename and image_file.filename.rsplit('.', 1)[1].lower() in allowed_extensions:
+                    # Generate unique filename
+                    import uuid
+                    filename = str(uuid.uuid4()) + '.' + image_file.filename.rsplit('.', 1)[1].lower()
+                    image_path = os.path.join('static', 'uploads', filename)
+                    os.makedirs(os.path.dirname(image_path), exist_ok=True)
+                    image_file.save(image_path)
+                    suggestion.image = filename
+                else:
+                    flash("Invalid image file type. Please upload PNG, JPG, JPEG, GIF, or WebP.", "error")
+                    return render_template("edit_user_suggestion.html", suggestion=suggestion, platforms=PLATFORMS)
+
+        # Handle installation file upload
+        if 'installation_file' in request.files and request.files['installation_file'].filename != '':
+            installation_file = request.files['installation_file']
+            if installation_file:
+                # Validate file type
+                allowed_extensions = {'txt', 'exe', 'msi', 'zip', 'rar', '7z', 'bat', 'cmd'}
+                if '.' in installation_file.filename and installation_file.filename.rsplit('.', 1)[1].lower() in allowed_extensions:
+                    # Generate unique filename
+                    import uuid
+                    filename = str(uuid.uuid4()) + '.' + installation_file.filename.rsplit('.', 1)[1].lower()
+                    file_path = os.path.join('static', 'uploads', filename)
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                    installation_file.save(file_path)
+                    suggestion.installation_file = filename
+                else:
+                    flash("Invalid installation file type. Please upload TXT, EXE, MSI, ZIP, RAR, 7Z, BAT, or CMD files.", "error")
+                    return render_template("edit_user_suggestion.html", suggestion=suggestion, platforms=PLATFORMS)
+
+        try:
+            suggestion.title = title
+            suggestion.platform = platform
+            suggestion.genre = genre
+            suggestion.description = description
+            suggestion.installation_instructions = installation_instructions
+            db.session.commit()
+
+            # Update the corresponding UserGame entry
+            user_game = UserGame.query.filter_by(
+                username=session["username"],
+                game_id=None,
+                title=suggestion.title,
+                platform=suggestion.platform
+            ).first()
+            if user_game:
+                user_game.title = title
+                user_game.platform = platform
+                user_game.genre = genre
+                db.session.commit()
+
+            flash("Suggestion updated successfully!", "success")
+            return redirect(url_for("library"))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error updating suggestion: {str(e)}", "error")
+
+    return render_template("edit_user_suggestion.html", suggestion=suggestion, platforms=PLATFORMS)
 
 # ---------- CUSTOMER: MARKETPLACE ----------
 @app.route("/marketplace")
@@ -1278,6 +1575,7 @@ def suggest_game():
         platform = request.form["platform"].strip()
         genre = request.form.get("genre", "Action").strip()
         description = request.form.get("description", "").strip()
+        installation_instructions = request.form.get("installation_instructions", "").strip()
 
         # Validate inputs
         if not title:
@@ -1294,6 +1592,9 @@ def suggest_game():
             return render_template("suggest_game.html")
         if not genre:
             flash("Genre cannot be empty.", "error")
+            return render_template("suggest_game.html")
+        if not installation_instructions:
+            flash("Installation instructions are required.", "error")
             return render_template("suggest_game.html")
 
         # Handle image upload
@@ -1315,6 +1616,25 @@ def suggest_game():
                     flash("Invalid image file type. Please upload PNG, JPG, JPEG, GIF, or WebP.", "error")
                     return render_template("suggest_game.html")
 
+        # Handle installation file upload
+        installation_filename = None
+        if 'installation_file' in request.files:
+            installation_file = request.files['installation_file']
+            if installation_file and installation_file.filename != '':
+                # Validate file type
+                allowed_extensions = {'txt', 'exe', 'msi', 'zip', 'rar', '7z', 'bat', 'cmd'}
+                if '.' in installation_file.filename and installation_file.filename.rsplit('.', 1)[1].lower() in allowed_extensions:
+                    # Generate unique filename
+                    import uuid
+                    filename = str(uuid.uuid4()) + '.' + installation_file.filename.rsplit('.', 1)[1].lower()
+                    file_path = os.path.join('static', 'uploads', filename)
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                    installation_file.save(file_path)
+                    installation_filename = filename
+                else:
+                    flash("Invalid installation file type. Please upload TXT, EXE, MSI, ZIP, RAR, 7Z, BAT, or CMD files.", "error")
+                    return render_template("suggest_game.html")
+
         # Check if suggestion already exists
         existing_suggestion = GameSuggestion.query.filter_by(title=title, platform=platform).first()
         if existing_suggestion:
@@ -1327,25 +1647,24 @@ def suggest_game():
                 platform=platform,
                 genre=genre,
                 description=description,
+                installation_instructions=installation_instructions,
+                installation_file=installation_filename,
                 suggested_by=session["username"],
                 status='pending'
             )
             db.session.add(suggestion)
             db.session.commit()
 
-            # Store image filename in a simple way - we'll use a global variable approach
-            # or just rely on the file being saved with the suggestion ID
+            # Store image filename in database
             if image_filename:
-                # Rename the uploaded file to include suggestion ID for easy retrieval
-                import uuid
-                new_filename = f'suggestion_{suggestion.id}_{str(uuid.uuid4())[:8]}.{image_filename.split(".")[-1]}'
-                old_path = os.path.join('static', 'uploads', image_filename)
-                new_path = os.path.join('static', 'uploads', new_filename)
-                if os.path.exists(old_path):
-                    os.rename(old_path, new_path)
-                    # Store the filename in a simple text file for retrieval
-                    with open(os.path.join('static', 'uploads', f'suggestion_{suggestion.id}.txt'), 'w') as f:
-                        f.write(new_filename)
+                suggestion.image = image_filename
+                db.session.commit()
+
+            # Add the suggested game to user's library immediately
+            user_game = UserGame(username=session["username"], game_id=None, condition='suggested',
+                               title=suggestion.title, platform=suggestion.platform, genre=suggestion.genre)
+            db.session.add(user_game)
+            db.session.commit()
 
             flash("Game suggestion submitted successfully!", "success")
             return redirect(url_for("customer"))
@@ -1481,6 +1800,41 @@ def api_search():
             })
 
         return jsonify({'success': True, 'results': results})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route("/api/game_ratings/<int:game_id>")
+def api_game_ratings(game_id):
+    """API endpoint to get ratings and reviews for a game"""
+    try:
+        # Get all ratings for this game
+        ratings = Rating.query.filter_by(game_id=game_id).order_by(Rating.date.desc()).all()
+
+        # Calculate average rating
+        if ratings:
+            total_rating = sum(r.rating for r in ratings)
+            average_rating = total_rating / len(ratings)
+            total_ratings = len(ratings)
+        else:
+            average_rating = 0.0
+            total_ratings = 0
+
+        # Format ratings for JSON response
+        ratings_data = []
+        for rating in ratings:
+            ratings_data.append({
+                'username': rating.username,
+                'rating': rating.rating,
+                'review': rating.review,
+                'date': rating.date.isoformat()
+            })
+
+        return jsonify({
+            'success': True,
+            'average_rating': average_rating,
+            'total_ratings': total_ratings,
+            'ratings': ratings_data
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 

@@ -31,7 +31,8 @@
             {% endif %}
         {% endwith %}
 
-        {% if user_games %}
+        {% if purchased_games %}
+        <h2>Purchased Games</h2>
         <table>
             <thead>
                 <tr>
@@ -45,7 +46,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for user_game in user_games %}
+                {% for user_game in purchased_games %}
                 <tr>
                     <td>{{ user_game.game.title if user_game.game else user_game.title }}</td>
                     <td>{{ user_game.game.platform if user_game.game else user_game.platform }}</td>
@@ -62,8 +63,8 @@
                     <td>
                         {% if not user_game.listed_for_sale %}
                             {% if user_game.game %}
-                                <a href="{{ url_for('sell', user_game_id=user_game.id) }}" class="btn">Sell</a>
-                                <a href="{{ url_for('rate_game', game_id=user_game.game_id) }}" class="btn">Rate</a>
+                                <a href="{{ url_for('sell', user_game_id=user_game.id) }}" class="btn btn-small">Sell</a>
+                                <a href="{{ url_for('rate_game', game_id=user_game.game_id) }}" class="btn btn-small">Rate</a>
                             {% else %}
                                 Owned (Community)
                             {% endif %}
@@ -75,7 +76,53 @@
                 {% endfor %}
             </tbody>
         </table>
-        {% else %}
+        {% endif %}
+
+        {% if created_games %}
+        <h2>My Created Games</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Image</th>
+                    <th>Game Title</th>
+                    <th>Platform</th>
+                    <th>Genre</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user_game in created_games %}
+                <tr>
+                    <td>
+                        {% if user_game.suggestion and user_game.suggestion.image %}
+                            <img src="static/uploads/{{ user_game.suggestion.image }}" alt="{{ user_game.title }}" style="width: 50px; height: 50px; object-fit: cover;">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='logo.png') }}" alt="No image" style="width: 50px; height: 50px; object-fit: cover;">
+                        {% endif %}
+                    </td>
+                    <td>{{ user_game.title }}</td>
+                    <td>{{ user_game.platform }}</td>
+                    <td>{{ user_game.genre }}</td>
+                    <td>
+                        {% if user_game.condition == 'approved' %}
+                            <span class="approved">Approved</span>
+                        {% elif user_game.condition == 'suggested' %}
+                            <span class="pending">Pending Approval</span>
+                        {% else %}
+                            {{ user_game.condition.title() }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('edit_user_suggestion', suggestion_id=user_game.suggestion.id) }}" class="btn btn-small">Edit</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        {% if not purchased_games and not created_games %}
         <p>You don't own any games yet.</p>
         {% endif %}
 
