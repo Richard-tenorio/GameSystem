@@ -177,9 +177,8 @@
                 <label><input type="checkbox" name="confirm" required> Confirm suggestion update</label>
             </div>
 
-            <div class="button-group">
-                <button type="submit" class="btn"><i class="fas fa-save icon"></i>Update Suggestion</button>
-            </div>
+            <button type="submit"><i class="fas fa-save icon" aria-hidden="true"></i>Update Suggestion</button>
+            <a href="{{ url_for('admin') }}" class="btn cancel">Cancel</a>
         </form>
     </div>
 </main>
