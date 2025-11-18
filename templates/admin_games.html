@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Manage Games - GameSystem Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="{{ url_for('static', filename='toast.js') }}" defer></script>
+    <style>
+        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .error-text { color: red; font-size: 14px; margin-top: -5px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <header class="header-nav">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="logo.png">
+            GameSystem Admin
+        </div>
+        <div class="nav-links">
+            <a href="{{ url_for('admin') }}"><i class="fas fa-tachometer-alt icon"></i>Dashboard</a>
+            <a href="{{ url_for('admin_games') }}" class="active"><i class="fas fa-boxes icon"></i>Manage Games</a>
+            <a href="{{ url_for('manage_suggestions') }}"><i class="fas fa-list icon"></i>Suggestions</a>
+            <a href="{{ url_for('admin_settings') }}"><i class="fas fa-cog icon"></i>Settings</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <h1><i class="fas fa-boxes icon"></i>Manage Games</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}" role="alert" aria-live="assertive">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <section class="section">
+            <div class="card">
+                <h2><i class="fas fa-plus-circle icon"></i>Add New Game</h2>
+                <form method="post" action="{{ url_for('add_game') }}" enctype="multipart/form-data">
+                    <input type="text" name="title" placeholder="Game Title" value="{{ request.form.title or '' }}" required>
+                    {% if errors.title %}<div class="error-text">{{ errors.title }}</div>{% endif %}
+
+                    <select name="platform" required>
+                        <option value="">Select Platform</option>
+                        {% for platform_option in platforms %}
+                            <option value="{{ platform_option }}" {% if request.form.platform == platform_option %}selected{% endif %}>{{ platform_option }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if errors.platform %}<div class="error-text">{{ errors.platform }}</div>{% endif %}
+
+                    <select name="genre" required>
+                        <option value="">Select Genre</option>
+                        {% for genre in ['Action','Adventure','RPG','Strategy','Sports','Racing','Simulation','Puzzle','Horror','Fighting'] %}
+                            <option value="{{ genre }}" {% if request.form.genre == genre %}selected{% endif %}>{{ genre }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if errors.genre %}<div class="error-text">{{ errors.genre }}</div>{% endif %}
+
+                    <input type="number" name="quantity" placeholder="Quantity" value="{{ request.form.quantity or '' }}" min="1" required>
+                    {% if errors.quantity %}<div class="error-text">{{ errors.quantity }}</div>{% endif %}
+
+                    <input type="number" step="0.01" name="price" placeholder="Price (₱)" value="{{ request.form.price or '' }}" min="0.01" required>
+                    {% if errors.price %}<div class="error-text">{{ errors.price }}</div>{% endif %}
+
+                    <input type="file" name="image" accept="image/*" required>
+                    {% if errors.image %}<div class="error-text">{{ errors.image }}</div>{% endif %}
+
+                    <label><input type="checkbox" name="confirm" required> Confirm add game</label>
+
+                    <button type="submit"><i class="fas fa-plus icon"></i>Add Game</button>
+                </form>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="card">
+                <h2><i class="fas fa-boxes icon"></i>Official Game Inventory</h2>
+                <table>
+                    <tr>
+                        <th>Image</th>
+                        <th>Title</th>
+                        <th>Platform</th>
+                        <th>Genre</th>
+                        <th>Available</th>
+                        <th>Sold</th>
+                        <th>Price</th>
+                        <th>Actions</th>
+                    </tr>
+
+                    {% for game in games %}
+                    <tr>
+                        <td>
+                            {% if game.image %}
+                                <img src="{{ url_for('static', filename='uploads/' + game.image) }}" alt="{{ game.title }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='logo.png') }}" alt="No image" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+                            {% endif %}
+                        </td>
+                        <td>{{ game.title }}</td>
+                        <td>{{ game.platform }}</td>
+                        <td>{{ game.genre }}</td>
+                        <td>{{ game.quantity }}</td>
+                        <td>{{ game.sold_count }}</td>
+                        <td>₱{{ "%.2f"|format(game.price) }}</td>
+
+                        <td>
+                            <a href="{{ url_for('edit_game', game_id=game.id) }}" style="margin-right: 5px; background-color: #007bff; color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none;">Edit</a>
+                            <a href="{{ url_for('remove_game', game_id=game.id) }}" class="remove-link" style="margin-left: 10px; background-color: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none;" onclick="return confirm('Are you sure you want to remove this game?')">Remove</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+
+                {% if total_pages > 1 %}
+                <div class="pagination">
+                    {% if page > 1 %}
+                    <a href="{{ url_for('admin_games', page=page-1) }}">&laquo; Previous</a>
+                    {% endif %}
+
+                    {% for page_num in range(1, total_pages + 1) %}
+                    {% if page_num == page %}
+                    <span class="current-page">{{ page_num }}</span>
+                    {% else %}
+                    <a href="{{ url_for('admin_games', page=page_num) }}">{{ page_num }}</a>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if page < total_pages %}
+                    <a href="{{ url_for('admin_games', page=page+1) }}">Next &raquo;</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

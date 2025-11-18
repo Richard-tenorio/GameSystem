@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <title>Profile - GameSystem</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <!-- Font Awesome removed for offline compatibility -->
+    
     <style>
         .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
         .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
@@ -14,7 +14,7 @@
 <body>
     <header class="header-nav">
         <div class="logo">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="logo.png">
             GameSystem
         </div>
         <div class="nav-links">
@@ -38,7 +38,7 @@
                 <h2>Account Overview</h2>
                 <p><strong>Username:</strong> {{ session['username'] }}</p>
                 <p><strong>Role:</strong> {{ session['role'].title() }}</p>
-                <p><strong>Current Balance:</strong> ${{ "%.2f"|format(user_balance) }}</p>
+                <p><strong>Current Balance:</strong> ₱{{ "%.2f"|format(user_balance) }}</p>
                 <p><a href="{{ url_for('settings') }}" class="btn">Account Settings</a></p>
             </div>
         </section>
@@ -62,13 +62,20 @@
             <tbody>
                 {% for purchase in purchases %}
                 <tr>
-                    <td>{{ purchase.game.title }}</td>
+                    <td>
+                        {% if purchase.game.image %}
+                        <img src="{{ url_for('static', filename='uploads/' + purchase.game.image) }}" alt="{{ purchase.game.title }}" style="width: 50px; height: 50px; object-fit: cover; margin-right: 10px; vertical-align: middle;">
+                        {% else %}
+                        <img src="{{ url_for('static', filename='logo.png') }}" alt="logo.png" style="width: 50px; height: 50px; object-fit: cover; margin-right: 10px; vertical-align: middle;">
+                        {% endif %}
+                        {{ purchase.game.title }}
+                    </td>
                     <td>{{ purchase.game.platform }}</td>
                     <td>{{ purchase.game.genre }}</td>
                     <td>{{ purchase.purchase_date.strftime('%Y-%m-%d') }}</td>
                     <td>{{ purchase.condition.title() }}</td>
-                    <td>${{ "%.2f"|format(purchase.price_paid) }}</td>
-                    <td>{{ purchase.seller_username or 'Store' }}</td>
+                    <td>₱{{ "%.2f"|format(purchase.price_paid) }}</td>
+                    <td>{{ purchase.sale_username or 'Store' }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sell Game - GameSystem</title>
+    <title>Sale Game - GameSystem</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
@@ -13,7 +13,7 @@
 </head>
 <body>
     <div class="box">
-        <h1>GameSystem - Sell Game</h1>
+        <h1>GameSystem - Sale Game</h1>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -34,7 +34,7 @@
         </div>
 
         <form method="POST" class="sell-form">
-            <label for="sale_price">Sale Price ($):</label><br>
+            <label for="sale_price">Sale Price (₱):</label><br>
             <input type="number" id="sale_price" name="sale_price" step="0.01" min="0.01" required><br>
             <button type="submit" class="btn">List for Sale</button>
         </form>

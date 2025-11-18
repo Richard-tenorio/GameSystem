@@ -2,6 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Confirm Purchase - GameSystem</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -107,7 +108,7 @@
 <body>
     <header class="header-nav">
         <div class="logo">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="logo.png">
             GameSystem
         </div>
         <div class="nav-links">
@@ -129,7 +130,7 @@
 
         <div class="confirmation-card">
             <div class="game-details">
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo" class="game-image">
+                <img src="{% if game.image %}static/uploads/{{ game.image }}{% else %}{{ url_for('static', filename='logo.png') }}{% endif %}" alt="logo.png" class="game-image">
                 <div class="game-info">
                     <h3>{{ game.title }}</h3>
                     <p><strong>Platform:</strong> {{ game.platform }}</p>

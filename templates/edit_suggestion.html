@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+e {% extends "base.html" %}
 
 {% block title %}Edit Suggestion - GameSystem Admin{% endblock %}
 
@@ -73,7 +73,7 @@
 {% block content %}
 <header class="header-nav">
     <div class="logo">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="logo.png">
         GameSystem Admin
     </div>
     <div class="nav-links">
@@ -177,6 +177,8 @@
                 <label><input type="checkbox" name="confirm" required> Confirm suggestion update</label>
             </div>
 
+            <button type="submit" style="padding: 6px 12px; font-size: 12px;"><i class="fas fa-save icon" aria-hidden="true"></i>Update Suggestion</button>
+            <a href="{{ url_for('admin') }}" class="btn" style="padding: 6px 12px; font-size: 12px; margin-left: 10px;">Cancel</a>
             <button type="submit" style="padding: 6px 12px; font-size: 12px;"><i class="fas fa-save icon" aria-hidden="true"></i>Update Suggestion</button>
             <a href="{{ url_for('admin') }}" style="padding: 6px 12px; font-size: 12px; margin-left: 10px;">Cancel</a>
         </form>

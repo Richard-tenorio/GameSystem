@@ -23,7 +23,7 @@
         {% endwith %}
 
         <form method="POST" action="{{ url_for('add_game') }}">
-            {{ form.hidden_tag() }}  <!-- CSRF token -->
+            {{ form.hidden_tag() }}  
             <label for="title">Title:</label><br>
             {{ form.title(size=32) }}<br><br>
             <label for="platform">Platform:</label><br>
