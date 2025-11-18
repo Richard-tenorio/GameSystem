@@ -34,6 +34,7 @@
             GameSystem Admin
         </div>
         <div class="nav-links">
+            <a href="{{ url_for('user_management') }}"><i class="fas fa-users icon"></i>User Management</a>
             {% if pending_count > 0 %}
             <a href="{{ url_for('manage_suggestions') }}" class="notification-link">
                 <i class="fas fa-bell icon"></i>Suggestions
@@ -44,7 +45,7 @@
             <a href="{{ url_for('manage_suggestions') }}"><i class="fas fa-list icon"></i>Suggestions</a>
             {% endif %}
             <a href="{{ url_for('admin_settings') }}"><i class="fas fa-cog icon"></i>Settings</a>
-            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')" class="logout-btn"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
         </div>
     </header>
     <main class="main-content">
