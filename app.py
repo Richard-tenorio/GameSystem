@@ -18,7 +18,7 @@ with app.app_context():
 app.permanent_session_lifetime = timedelta(minutes=30)
 
 PLATFORMS = [
-    
+
     "PlayStation 1 (PS1)",
     "PlayStation 2 (PS2)",
     "PlayStation 3 (PS3)",
@@ -27,13 +27,13 @@ PLATFORMS = [
     "PlayStation Portable (PSP)",
     "PlayStation Vita (PS Vita)",
     "PlayStation Portal (Remote device)",
-    
+
     "Xbox (Original)",
     "Xbox 360",
     "Xbox One / One S / One X",
     "Xbox Series S",
     "Xbox Series X",
-    
+
     "Nintendo Entertainment System (NES)",
     "Super Nintendo (SNES)",
     "Nintendo 64 (N64)",
@@ -52,20 +52,20 @@ PLATFORMS = [
     "Nintendo 3DS",
     "Nintendo 3DS XL",
     "New 2DS XL",
-    
+
     "Sega Master System",
     "Sega Genesis / Mega Drive",
     "Sega Saturn",
     "Sega Dreamcast",
     "Game Gear",
-    
+
     "Atari 2600",
     "Atari 5200",
     "Atari 7800",
     "Atari Jaguar",
     "Atari Lynx",
     "Atari VCS (Modern re-release)",
-    
+
     "Neo Geo",
     "Neo Geo Pocket",
     "TurboGrafx-16 (PC Engine)",
@@ -136,6 +136,10 @@ def login():
 
     return render_template("login.html")
 
+@app.route("/index")
+def index():
+    return render_template("index.html")
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -145,7 +149,7 @@ def register():
         age = request.form["age"]
         password = request.form["password"]
         confirm_password = request.form["confirm_password"]
-        role = "customer"  
+        role = "customer"
 
         if password != confirm_password:
             flash("Passwords do not match.", "error")
@@ -205,7 +209,7 @@ def admin():
         total_games = Game.query.count()
         sold_games = Purchase.query.count()
         total_users = User.query.filter_by(role='customer').count()
-        active_users = total_users  
+        active_users = total_users
 
         total_revenue = db.session.query(db.func.sum(Purchase.price_paid)).scalar() or 0.0
 
@@ -221,8 +225,8 @@ def admin():
 
         games = []
         for row in game_rows:
-            game = row[0]  
-            sold_count = row[1]  
+            game = row[0]
+            sold_count = row[1]
             game.sold_count = sold_count
             games.append(game)
 
@@ -256,7 +260,7 @@ def admin_games():
     offset = (page - 1) * per_page
 
     try:
-        
+
         game_rows = db.session.query(
             Game,
             db.func.count(Purchase.id).label('sold_count')
@@ -269,8 +273,8 @@ def admin_games():
 
         games = []
         for row in game_rows:
-            game = row[0]  
-            sold_count = row[1]  
+            game = row[0]
+            sold_count = row[1]
             game.sold_count = sold_count
             games.append(game)
 
@@ -288,8 +292,12 @@ def admin_games():
 @app.route("/add_game", methods=["POST"])
 def add_game():
     if "username" in session and session["role"] == "admin":
-        title = request.form["title"].strip()
-        platform = request.form["platform"].strip()
+        title = re.sub(r'[^\w\s\-\.\(\)]', '', request.form["title"].strip())
+        if len(title) > 100:
+            title = title[:100]
+        platform = re.sub(r'[^\w\s\-\.\(\)]', '', request.form["platform"].strip())
+        if len(platform) > 50:
+            platform = platform[:50]
         quantity = request.form["quantity"].strip()
         genre = request.form.get("genre", "Action").strip()
         price = request.form["price"].strip()
@@ -344,10 +352,10 @@ def add_game():
         if 'installation_file' in request.files:
             installation_file = request.files['installation_file']
             if installation_file and installation_file.filename != '':
-                
+
                 allowed_app_extensions = {'exe', 'msi', 'zip', 'rar', '7z', 'bat', 'cmd', 'txt'}
                 if '.' in installation_file.filename and installation_file.filename.rsplit('.', 1)[1].lower() in allowed_app_extensions:
-                    
+
                     import uuid
                     filename = str(uuid.uuid4()) + '.' + installation_file.filename.rsplit('.', 1)[1].lower()
                     file_path = os.path.join('static', 'uploads', filename)
@@ -364,7 +372,7 @@ def add_game():
             return redirect(url_for("admin"))
 
         try:
-            
+
             import uuid
             filename = str(uuid.uuid4()) + '.' + image_file.filename.rsplit('.', 1)[1].lower()
             image_path = os.path.join('static', 'uploads', filename)
@@ -426,7 +434,7 @@ def user_management():
         for user in users:
             total_purchases = Purchase.query.filter_by(username=user.username).count()
             user.total_purchases = total_purchases
-            user.active_purchases = total_purchases  
+            user.active_purchases = total_purchases
 
     except Exception as e:
         flash("Error loading user management.", "error")
@@ -526,7 +534,7 @@ def change_logo():
         return redirect(url_for("admin"))
 
     try:
-        
+
         import uuid
         filename = 'logo.' + logo_file.filename.rsplit('.', 1)[1].lower()
         logo_path = os.path.join('static', filename)
@@ -659,8 +667,12 @@ def edit_game(game_id):
         return redirect(url_for("admin"))
 
     if request.method == "POST":
-        title = request.form["title"].strip()
-        platform = request.form["platform"].strip()
+        title = re.sub(r'[^\w\s\-\.\(\)]', '', request.form["title"].strip())
+        if len(title) > 100:
+            title = title[:100]
+        platform = re.sub(r'[^\w\s\-\.\(\)]', '', request.form["platform"].strip())
+        if len(platform) > 50:
+            platform = platform[:50]
         genre = request.form.get("genre", "Action").strip()
         price = request.form["price"].strip()
         quantity = request.form["quantity"].strip()
@@ -708,7 +720,7 @@ def edit_game(game_id):
         if 'image' in request.files and request.files['image'].filename != '':
             image_file = request.files['image']
             if image_file:
-                
+
                 allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'jfif'}
                 if '.' not in image_file.filename or image_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
                     flash("Invalid image file type. Please upload PNG, JPG, JPEG, GIF, WebP, or JFIF.", "error")
@@ -724,10 +736,10 @@ def edit_game(game_id):
         if 'installation_file' in request.files and request.files['installation_file'].filename != '':
             installation_file = request.files['installation_file']
             if installation_file:
-                
+
                 allowed_app_extensions = {'exe', 'msi', 'zip', 'rar', '7z', 'bat', 'cmd', 'txt'}
                 if '.' in installation_file.filename and installation_file.filename.rsplit('.', 1)[1].lower() in allowed_app_extensions:
-                    
+
                     import uuid
                     filename = str(uuid.uuid4()) + '.' + installation_file.filename.rsplit('.', 1)[1].lower()
                     file_path = os.path.join('static', 'uploads', filename)
@@ -768,10 +780,16 @@ def edit_suggestion(suggestion_id):
         return redirect(url_for("admin"))
 
     if request.method == "POST":
-        title = request.form["title"].strip()
-        platform = request.form["platform"].strip()
+        title = re.sub(r'[^\w\s\-\.\(\)]', '', request.form["title"].strip())
+        if len(title) > 100:
+            title = title[:100]
+        platform = re.sub(r'[^\w\s\-\.\(\)]', '', request.form["platform"].strip())
+        if len(platform) > 50:
+            platform = platform[:50]
         genre = request.form.get("genre", "Action").strip()
-        description = request.form.get("description", "").strip()
+        description = re.sub(r'[^\w\s\-\.\(\)\,\!\?\:\;\'\"\n\r]', '', request.form.get("description", "").strip())
+        if len(description) > 1000:
+            description = description[:1000]
 
         if not title:
             flash("Game title cannot be empty.", "error")
@@ -798,7 +816,7 @@ def edit_suggestion(suggestion_id):
         if 'image' in request.files and request.files['image'].filename != '':
             image_file = request.files['image']
             if image_file:
-                
+
                 allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
                 if '.' in image_file.filename or image_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
                     flash("Invalid image file type. Please upload PNG, JPG, JPEG, GIF, or WebP.", "error")
@@ -837,11 +855,17 @@ def customer():
     offset = (page - 1) * per_page
 
     search = request.args.get('search', '')
+    if len(search) > 100:
+        search = search[:100]
     platform_filter = request.args.get('platform', '')
+    if len(platform_filter) > 50:
+        platform_filter = platform_filter[:50]
     genre_filter = request.args.get('genre', '')
+    if len(genre_filter) > 50:
+        genre_filter = genre_filter[:50]
 
     try:
-        
+
         user = User.query.filter_by(username=session["username"]).first()
         user_balance = user.balance if user else 0.0
 
@@ -897,7 +921,7 @@ def customer():
         no_results = search_performed and not official_games and not user_games and not approved_suggestions
 
         if no_results:
-            
+
             search = ''
             platform_filter = ''
             genre_filter = ''
@@ -920,7 +944,7 @@ def customer():
                         suggestion.image = f.read().strip()
 
     except Exception as e:
-        flash(f"Error loading games: {str(e)}", "error")
+        flash(f"Error loading games: {re.escape(str(e))}", "error")
         official_games = []
         user_games = []
         approved_suggestions = []
@@ -946,10 +970,10 @@ def buy(game_id):
 
                 return redirect(url_for('confirm_purchase', game_id=game_id, condition='new'))
             else:
-                
+
                 suggestion = GameSuggestion.query.get(game_id)
                 if suggestion and suggestion.status == 'approved':
-                    
+
                     return redirect(url_for('confirm_purchase', game_id=game_id, condition='free'))
                 else:
                     flash("Game not found.", "error")
@@ -964,7 +988,7 @@ def add_to_library(game_id):
         return redirect(url_for("login"))
 
     try:
-        
+
         suggestion = GameSuggestion.query.get(game_id)
         if not suggestion or suggestion.status != 'approved':
             flash("Game not found or not available.", "error")
@@ -998,7 +1022,7 @@ def confirm_purchase(game_id):
         user = User.query.filter_by(username=session["username"]).first()
 
         if condition == 'free':
-            
+
             suggestion = GameSuggestion.query.get(game_id)
             if not suggestion or suggestion.status != 'approved':
                 flash("Game not found.", "error")
@@ -1027,7 +1051,7 @@ def confirm_purchase(game_id):
                     return redirect(url_for("customer"))
                 price = game.price
             else:
-                
+
                 user_game = UserGame.query.filter_by(game_id=game_id, listed_for_sale=True).first()
                 if not user_game:
                     flash("Game not found for sale.", "error")
@@ -1053,7 +1077,7 @@ def process_purchase(game_id):
         user = User.query.filter_by(username=session["username"]).first()
 
         if condition == 'free':
-            
+
             suggestion = GameSuggestion.query.get(game_id)
             if not suggestion or suggestion.status != 'approved':
                 flash("Game not found.", "error")
@@ -1078,7 +1102,7 @@ def process_purchase(game_id):
                     return redirect(url_for("customer"))
                 price = game.price
             else:
-                
+
                 user_game = UserGame.query.filter_by(game_id=game_id, listed_for_sale=True).first()
                 if not user_game:
                     flash("Game not found for sale.", "error")
@@ -1095,7 +1119,7 @@ def process_purchase(game_id):
                 return redirect(url_for("confirm_purchase", game_id=game_id, condition=condition))
 
             if condition == 'new':
-                
+
                 purchase = Purchase(username=session["username"], game_id=game_id, price_paid=price)
                 db.session.add(purchase)
 
@@ -1104,12 +1128,12 @@ def process_purchase(game_id):
 
                 game.quantity -= 1
             else:
-                
+
                 sale_user_game = UserGame.query.filter_by(game_id=game_id, listed_for_sale=True).first()
 
                 purchase = Purchase(username=session["username"], game_id=game_id, condition='used', price_paid=price, sale_username=sale_user_game.username)
                 db.session.add(purchase)
-                
+
                 sale_user_game.username = session["username"]
                 sale_user_game.condition = 'used'
                 sale_user_game.listed_for_sale = False
@@ -1301,7 +1325,7 @@ def library():
         return redirect(url_for("login"))
 
     try:
-        
+
         purchased_games = UserGame.query.filter_by(username=session["username"]).filter(UserGame.game_id.isnot(None)).join(Game).order_by(UserGame.purchase_date.desc()).all()
 
         purchased_titles_platforms = db.session.query(Game.title, Game.platform).join(UserGame, UserGame.game_id == Game.id).filter(UserGame.username == session["username"]).subquery()
@@ -1334,11 +1358,17 @@ def edit_user_suggestion(suggestion_id):
         return redirect(url_for("library"))
 
     if request.method == "POST":
-        title = request.form["title"].strip()
-        platform = request.form["platform"].strip()
+        title = re.sub(r'[^\w\s\-\.\(\)]', '', request.form["title"].strip())
+        if len(title) > 100:
+            title = title[:100]
+        platform = re.sub(r'[^\w\s\-\.\(\)]', '', request.form["platform"].strip())
+        if len(platform) > 50:
+            platform = platform[:50]
         genre = request.form.get("genre", "Action").strip()
         price = request.form.get("price", "").strip()
-        description = request.form.get("description", "").strip()
+        description = re.sub(r'[^\w\s\-\.\(\)\,\!\?\:\;\'\"\n\r]', '', request.form.get("description", "").strip())
+        if len(description) > 1000:
+            description = description[:1000]
         installation_instructions = request.form.get("installation_instructions", "").strip()
 
         if not title:
@@ -1369,10 +1399,10 @@ def edit_user_suggestion(suggestion_id):
         if 'image' in request.files and request.files['image'].filename != '':
             image_file = request.files['image']
             if image_file:
-                
+
                 allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
                 if '.' in image_file.filename and image_file.filename.rsplit('.', 1)[1].lower() in allowed_extensions:
-                    
+
                     import uuid
                     filename = str(uuid.uuid4()) + '.' + image_file.filename.rsplit('.', 1)[1].lower()
                     image_path = os.path.join('static', 'uploads', filename)
@@ -1386,10 +1416,10 @@ def edit_user_suggestion(suggestion_id):
         if 'installation_file' in request.files and request.files['installation_file'].filename != '':
             installation_file = request.files['installation_file']
             if installation_file:
-                
+
                 allowed_extensions = {'txt', 'exe', 'msi', 'zip', 'rar', '7z', 'bat', 'cmd'}
                 if '.' in installation_file.filename and installation_file.filename.rsplit('.', 1)[1].lower() in allowed_extensions:
-                    
+
                     import uuid
                     filename = str(uuid.uuid4()) + '.' + installation_file.filename.rsplit('.', 1)[1].lower()
                     file_path = os.path.join('static', 'uploads', filename)
@@ -1401,7 +1431,7 @@ def edit_user_suggestion(suggestion_id):
                     return render_template("edit_user_suggestion.html", suggestion=suggestion, platforms=PLATFORMS)
 
         try:
-            
+
             changes_made = False
 
             if (suggestion.title != title or
@@ -1462,7 +1492,7 @@ def edit_user_suggestion(suggestion_id):
             return redirect(url_for("library"))
         except Exception as e:
             db.session.rollback()
-            flash(f"Error updating suggestion: {str(e)}", "error")
+            flash(f"Error updating suggestion: {re.escape(str(e))}", "error")
 
     return render_template("edit_user_suggestion.html", suggestion=suggestion, platforms=PLATFORMS)
 
@@ -1476,11 +1506,17 @@ def marketplace():
     offset = (page - 1) * per_page
 
     search = request.args.get('search', '')
+    if len(search) > 100:
+        search = search[:100]
     platform_filter = request.args.get('platform', '')
+    if len(platform_filter) > 50:
+        platform_filter = platform_filter[:50]
     genre_filter = request.args.get('genre', '')
+    if len(genre_filter) > 50:
+        genre_filter = genre_filter[:50]
 
     try:
-        
+
         query = UserGame.query.filter_by(listed_for_sale=True).join(Game)
 
         if search:
@@ -1584,11 +1620,17 @@ def suggest_game():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        title = request.form["title"].strip()
-        platform = request.form["platform"].strip()
+        title = re.sub(r'[^\w\s\-\.\(\)]', '', request.form["title"].strip())
+        if len(title) > 100:
+            title = title[:100]
+        platform = re.sub(r'[^\w\s\-\.\(\)]', '', request.form["platform"].strip())
+        if len(platform) > 50:
+            platform = platform[:50]
         genre = request.form.get("genre", "Action").strip()
         price = request.form.get("price", "").strip()
-        description = request.form.get("description", "").strip()
+        description = re.sub(r'[^\w\s\-\.\(\)\,\!\?\:\;\'\"\n\r]', '', request.form.get("description", "").strip())
+        if len(description) > 1000:
+            description = description[:1000]
         installation_instructions = request.form.get("installation_instructions", "").strip()
 
         if not title:
@@ -1614,10 +1656,10 @@ def suggest_game():
         if 'image' in request.files:
             image_file = request.files['image']
             if image_file and image_file.filename != '':
-                
+
                 allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
                 if '.' in image_file.filename and image_file.filename.rsplit('.', 1)[1].lower() in allowed_extensions:
-                    
+
                     import uuid
                     filename = str(uuid.uuid4()) + '.' + image_file.filename.rsplit('.', 1)[1].lower()
                     image_path = os.path.join('static', 'uploads', filename)
@@ -1632,10 +1674,10 @@ def suggest_game():
         if 'installation_file' in request.files:
             installation_file = request.files['installation_file']
             if installation_file and installation_file.filename != '':
-                
+
                 allowed_extensions = {'txt', 'exe', 'msi', 'zip', 'rar', '7z', 'bat', 'cmd'}
                 if '.' in installation_file.filename and installation_file.filename.rsplit('.', 1)[1].lower() in allowed_extensions:
-                    
+
                     import uuid
                     filename = str(uuid.uuid4()) + '.' + installation_file.filename.rsplit('.', 1)[1].lower()
                     file_path = os.path.join('static', 'uploads', filename)
@@ -1679,7 +1721,7 @@ def suggest_game():
             return redirect(url_for("customer"))
         except Exception as e:
             db.session.rollback()
-            flash(f"Error submitting suggestion: {str(e)}", "error")
+            flash(f"Error submitting suggestion: {re.escape(str(e))}", "error")
 
     return render_template("suggest_game.html")
 
@@ -1707,16 +1749,16 @@ def rate_game(game_id):
         review = request.form.get("review", "").strip()
 
         try:
-            
+
             existing = Rating.query.filter_by(username=session["username"], game_id=game_id).first()
 
             if existing:
-                
+
                 existing.rating = int(rating)
                 existing.review = review
                 existing.date = datetime.utcnow()
             else:
-                
+
                 new_rating = Rating(username=session["username"], game_id=game_id, rating=int(rating), review=review)
                 db.session.add(new_rating)
 
@@ -1747,7 +1789,7 @@ def forgot_password():
             flash("An error occurred. Please try again.", "error")
 
     if request.method == "POST" and user_found:
-        
+
         return render_template("forgot_password.html", username=username, show_reset=True)
 
     if request.method == "POST" and "new_password" in request.form:
@@ -1782,6 +1824,8 @@ def forgot_password():
 @app.route("/api/search")
 def api_search():
     query = request.args.get('q', '').strip()
+    if not query or len(query) > 100:
+        return jsonify({'success': False, 'results': []})
     if len(query) < 2:
         return jsonify({'success': False, 'results': []})
     try:
@@ -1852,9 +1896,9 @@ def api_cart_count():
 
 @app.route("/health")
 def health_check():
-    
+
     try:
-        
+
         db.session.execute(text('SELECT 1'))
         return jsonify({
             'status': 'healthy',
@@ -1875,14 +1919,14 @@ def logout():
 
 @app.after_request
 def add_header(response):
-    
+
     response.headers['X-UA-Compatible'] = 'IE=Edge,chrome=1'
-    
+
     if request.endpoint in ['static']:
-        
+
         response.headers['Cache-Control'] = 'public, max-age=3600'
     else:
-        
+
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
