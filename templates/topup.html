@@ -4,7 +4,43 @@
     <meta charset="utf-8" />
     <title>Top Up Balance - GameSystem</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <!-- Font Awesome removed for offline compatibility -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="{{ url_for('static', filename='toast.js') }}" defer></script>
+    <style>
+        .box form {
+            text-align: center;
+        }
+        .box form div {
+            margin-bottom: 8px;
+        }
+        .box form div label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            text-align: left;
+        }
+        .box form button {
+            margin: 20px auto 0;
+            display: block;
+            font-weight: bold;
+        }
+        .box form input, .box form select {
+            width: 100%;
+            max-width: 400px;
+            padding: 10px 15px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #2a2a2a;
+            color: #f0f0f0;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .box form input:focus, .box form select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+        }
+    </style>
 </head>
 <body>
     <header class="header-nav">

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+us<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8" />
@@ -38,6 +38,18 @@
             color: #ffffff;
             margin: 0;
         }
+        .suggestion-title-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .suggestion-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
         .suggestion-meta {
             display: flex;
             gap: 15px;
@@ -69,6 +81,10 @@
         .suggestion-actions {
             display: flex;
             gap: 10px;
+        }
+        .action-btn {
+            padding: 6px 12px;
+            font-size: 14px;
         }
         .no-suggestions {
             text-align: center;
@@ -120,10 +136,16 @@
             {% for suggestion in suggestions %}
                 <div class="suggestion-card">
                     <div class="suggestion-header">
-                        <h2 class="suggestion-title">{{ suggestion.title }}</h2>
+                        <div class="suggestion-title-section">
+                            {% if suggestion.image %}
+                                <img src="{{ url_for('static', filename='uploads/' + suggestion.image) }}" alt="Suggestion Image" class="suggestion-image">
+                            {% endif %}
+                            <h2 class="suggestion-title">{{ suggestion.title }}</h2>
+                        </div>
                         <div class="suggestion-meta">
                             <span><i class="fas fa-gamepad"></i>{{ suggestion.platform }}</span>
                             <span><i class="fas fa-tag"></i>{{ suggestion.genre }}</span>
+                            <span>{{ "Free" if suggestion.status == 'approved' or suggestion.price == 0 else "₱%.2f"|format(suggestion.price) if suggestion.price is not none else "N/A" }}</span>
                             <span><i class="fas fa-user"></i>{{ suggestion.suggested_by }}</span>
                             <span><i class="fas fa-calendar"></i>{{ suggestion.date_suggested.strftime('%Y-%m-%d %H:%M') }}</span>
                         </div>
@@ -160,10 +182,6 @@
                 No game suggestions found.
             </div>
         {% endif %}
-
-        <a href="{{ url_for('admin') }}" class="back-link">
-            <i class="fas fa-arrow-left"></i> Back to Dashboard
-        </a>
     </main>
 </body>
 </html>

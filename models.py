@@ -72,6 +72,7 @@ class GameSuggestion(db.Model):
     title = db.Column(db.String(100), nullable=False)
     platform = db.Column(db.String(50), nullable=False)
     genre = db.Column(db.String(50), nullable=True)
+    price = db.Column(db.Float, nullable=True, default=0.0)
     description = db.Column(db.Text, nullable=True)
     installation_instructions = db.Column(db.Text, nullable=False)  # Required installation instructions
     installation_file = db.Column(db.String(255), nullable=True, default=None)  # Optional installation file

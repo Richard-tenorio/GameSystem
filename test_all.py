@@ -102,7 +102,7 @@ def test_api_cart_count(session):
 
 def test_api_ratings():
     print("Testing API ratings...")
-    response = requests.get(f'{base_url}/api/ratings/1')
+    response = requests.get(f'{base_url}/api/game_ratings/1')
     print(f"Ratings status: {response.status_code}")
     if response.status_code == 200:
         data = response.json()
