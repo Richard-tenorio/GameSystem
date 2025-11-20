@@ -2,15 +2,14 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Top Up Balance - GameSystem</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    
+    <!-- Font Awesome removed for offline compatibility -->
 </head>
 <body>
     <header class="header-nav">
         <div class="logo">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="logo.png">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
             GameSystem
         </div>
         <div class="nav-links">
@@ -35,7 +34,7 @@
         <h2>Add Funds to Your Account</h2>
         <p>Current Balance: <strong>₱{{ "%.2f"|format(user_balance) }}</strong></p>
 
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             <label for="amount">Top-up Amount (₱):</label>
             <input type="number" id="amount" name="amount" step="0.01" min="0.01" max="50000" required placeholder="Enter amount">
 
@@ -50,43 +49,22 @@
                 </div>
             </div>
 
-            <div style="margin-top: 20px;">
-                <p><strong>Select Payment Method:</strong></p>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <label style="display: flex; align-items: center; gap: 10px;">
-                        <input type="radio" name="payment_method" value="credit_card" required>
-                        <span>Credit Card (Visa, MasterCard, etc.)</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 10px;">
-                        <input type="radio" name="payment_method" value="debit_card" required>
-                        <span>Debit Card</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 10px;">
-                        <input type="radio" name="payment_method" value="paypal" required>
-                        <span>PayPal</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 10px;">
-                        <input type="radio" name="payment_method" value="gcash" required>
-                        <span>GCash</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 10px;">
-                        <input type="radio" name="payment_method" value="maya" required>
-                        <span>Maya</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 10px;">
-                        <input type="radio" name="payment_method" value="bank_transfer" required>
-                        <span>Bank Transfer</span>
-                    </label>
-                </div>
-            </div>
+            <label for="payment_method">Payment Method:</label>
+            <select id="payment_method" name="payment_method" required>
+                <option value="">Select Payment Method</option>
+                <option value="GCash">GCash</option>
+                <option value="PayMaya">PayMaya</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Other">Other</option>
+            </select>
 
-            <div style="margin-top: 20px;">
-                <label for="reference_number">Reference Number (optional):</label>
-                <input type="text" id="reference_number" name="reference_number" placeholder="Enter payment reference number" maxlength="50">
-                <small style="color: #888;">Enter the reference number from your payment confirmation for tracking purposes.</small>
-            </div>
+            <label for="reference_number">Reference Number:</label>
+            <input type="text" id="reference_number" name="reference_number" required placeholder="Enter reference number">
 
-            <button type="submit" class="btn btn-primary">Proceed to Payment</button>
+            <label for="screenshot">Payment Screenshot:</label>
+            <input type="file" id="screenshot" name="screenshot" accept="image/*" required>
+
+            <button type="submit" class="btn btn-primary">Submit Top-up Request</button>
         </form>
 
         <div style="margin-top: 30px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 8px;">
@@ -104,6 +82,23 @@
     <script>
         function setAmount(amount) {
             document.getElementById('amount').value = amount;
+        }
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            const preview = document.getElementById('image-preview');
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = '<img src="' + e.target.result + '" alt="Screenshot Preview">';
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.innerHTML = '';
+                preview.style.display = 'none';
+            }
         }
     </script>
 

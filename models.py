@@ -6,15 +6,18 @@ db = SQLAlchemy()
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False, index=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     full_name = db.Column(db.String(100), nullable=False)
     age = db.Column(db.Integer, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    role = db.Column(db.String(20), default='customer', index=True)
+    role = db.Column(db.String(20), default='customer')
     balance = db.Column(db.Float, nullable=False, default=100.0)
     reset_token = db.Column(db.String(100), nullable=True)
     reset_expires = db.Column(db.DateTime, nullable=True)
+    # Temporarily commented out OTP fields
+    # otp_code = db.Column(db.String(6), nullable=True)
+    # otp_expires = db.Column(db.DateTime, nullable=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -24,32 +27,32 @@ class User(db.Model):
 
 class Game(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), nullable=False, index=True)
-    platform = db.Column(db.String(50), nullable=False, index=True)
+    title = db.Column(db.String(100), nullable=False)
+    platform = db.Column(db.String(50), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False, default=0.0)
-    genre = db.Column(db.String(50), nullable=True, index=True)
+    genre = db.Column(db.String(50), nullable=True)
     image = db.Column(db.String(255), nullable=True, default=None)
-    installation_file = db.Column(db.String(255), nullable=True, default=None)
 
 class Purchase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False, index=True)
-    game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False, index=True)
-    purchase_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
-    condition = db.Column(db.String(20), nullable=False, default='new')
+    username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
+    game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False)
+    purchase_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    condition = db.Column(db.String(20), nullable=False, default='new')  # 'new' or 'used'
     price_paid = db.Column(db.Float, nullable=False)
-    sale_username = db.Column(db.String(80), nullable=True)
+    seller_username = db.Column(db.String(80), nullable=True)  # for used games
     game = db.relationship('Game', backref='purchases')
 
 class UserGame(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False, index=True)
-    game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=True)
+    username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
+    game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=True)  # Allow null for community games
     condition = db.Column(db.String(20), nullable=False, default='new')
-    purchase_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
-    listed_for_sale = db.Column(db.Boolean, nullable=False, default=False, index=True)
+    purchase_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    listed_for_sale = db.Column(db.Boolean, nullable=False, default=False)
     sale_price = db.Column(db.Float, nullable=True)
+    # For community games
     title = db.Column(db.String(100), nullable=True)
     platform = db.Column(db.String(50), nullable=True)
     genre = db.Column(db.String(50), nullable=True)
@@ -57,25 +60,43 @@ class UserGame(db.Model):
 
 class Rating(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False, index=True)
-    game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False, index=True)
+    username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
+    game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False)
     rating = db.Column(db.Integer, nullable=False)
     review = db.Column(db.Text, nullable=True)
-    date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     game = db.relationship('Game', backref='ratings')
 
 class GameSuggestion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), nullable=False, index=True)
-    platform = db.Column(db.String(50), nullable=False, index=True)
-    genre = db.Column(db.String(50), nullable=True, index=True)
-    price = db.Column(db.Float, nullable=False, default=0.0)
+    title = db.Column(db.String(100), nullable=False)
+    platform = db.Column(db.String(50), nullable=False)
+    genre = db.Column(db.String(50), nullable=True)
     description = db.Column(db.Text, nullable=True)
-    installation_instructions = db.Column(db.Text, nullable=False)
-    installation_file = db.Column(db.String(255), nullable=True, default=None)
-    suggested_by = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False, index=True)
-    status = db.Column(db.String(20), nullable=False, default='pending', index=True)
-    date_suggested = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
-    image = db.Column(db.String(255), nullable=True, default=None)
-    last_updated = db.Column(db.DateTime, nullable=True, default=None)
-    updated_by = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=True, default=None)
+    installation_instructions = db.Column(db.Text, nullable=False)  # Required installation instructions
+    installation_file = db.Column(db.String(255), nullable=True, default=None)  # Optional installation file
+    suggested_by = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='pending')
+    date_suggested = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    image = db.Column(db.String(255), nullable=True, default=None)  # Store image filename for suggestions
+
+class TopupRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='pending')  # pending, approved, rejected
+    date_requested = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    date_processed = db.Column(db.DateTime, nullable=True)
+    processed_by = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=True)
+    payment_method = db.Column(db.String(50), nullable=True)
+    reference_number = db.Column(db.String(50), nullable=True)
+    screenshot = db.Column(db.String(255), nullable=True)
+    user = db.relationship('User', backref='topup_requests', foreign_keys=[username])
+    processor = db.relationship('User', backref='processed_topups', foreign_keys=[processed_by])
+
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    is_read = db.Column(db.Boolean, default=False)
+    date_created = db.Column(db.DateTime, default=datetime.utcnow)

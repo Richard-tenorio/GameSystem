@@ -1,139 +1,143 @@
-{% extends "base.html" %}
-
-{% block title %}My Library - GameSystem{% endblock %}
-
-{% block content %}
-    <div class="header-nav">
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Library - GameSystem</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Font Awesome removed for offline compatibility -->
+</head>
+<body>
+    <header class="header-nav">
         <div class="logo">
             <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
             GameSystem
         </div>
+        <form method="get" action="{{ url_for('library') }}" class="search-form">
+            <input type="text" name="search" value="{{ request.args.get('search', '') }}" placeholder="Search your library..." class="search-input">
+            <button type="submit" class="btn btn-primary btn-uniform">Search</button>
+        </form>
         <div class="nav-links">
-            <a href="{{ url_for('customer') }}"><i class="fas fa-gamepad icon"></i>Browse Games</a>
-            <a href="{{ url_for('profile') }}"><i class="fas fa-user icon"></i>Profile</a>
-            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+            <span class="balance-display">Balance: ₱{{ "%.2f"|format(user_balance) }}</span>
+            <a href="{{ url_for('customer') }}">Dashboard</a>
+            <a href="{{ url_for('profile') }}">Profile</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')">Logout</a>
+        </div>
+    </header>
+
+    <h1>Purchased Games</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if purchased_games %}
+        <div class="games-grid">
+            {% for user_game in purchased_games %}
+            <div class="game-card" onclick="openModal('{{ user_game.game.title }}', '{{ user_game.game.platform }}', '{{ user_game.game.genre or 'N/A' }}', '{{ user_game.condition }}', '{{ "%.2f"|format(user_game.game.price) }}', '{{ user_game.game.image }}', '{{ url_for('sale', user_game_id=user_game.id) }}', '{{ url_for('rate_game', game_id=user_game.game.id) }}', 'true', '{{ user_game.game.id }}')">
+                <img src="{% if user_game.game.image %}static/uploads/{{ user_game.game.image }}{% else %}{{ url_for('static', filename='logo.png') }}{% endif %}" alt="{{ user_game.game.title }}" class="game-image">
+                <div class="game-info">
+                    <h3>{{ user_game.game.title }}</h3>
+                    <p>{{ user_game.game.platform }}</p>
+                    <p class="price">Purchased: ₱{{ "%.2f"|format(user_game.game.price) }}</p>
+                    <p class="condition">Condition: {{ user_game.condition }}</p>
+                    <p class="purchase-date">Purchased: {{ user_game.purchase_date.strftime('%Y-%m-%d') }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <div class="pagination">
+            {% if page > 1 %}
+            <a href="{{ url_for('library', page=page-1, search=search) }}">&laquo; Previous</a>
+            {% endif %}
+
+            {% for page_num in range(1, total_pages + 1) %}
+            {% if page_num == page %}
+            <span class="current-page">{{ page_num }}</span>
+            {% else %}
+            <a href="{{ url_for('library', page=page_num, search=search) }}">{{ page_num }}</a>
+            {% endif %}
+            {% endfor %}
+
+            {% if page < total_pages %}
+            <a href="{{ url_for('library', page=page+1, search=search) }}">Next &raquo;</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    {% else %}
+        <p>You haven't purchased any games yet.</p>
+    {% endif %}
+
+    <h2>My Created Games</h2>
+    <div class="games-grid">
+        {% for user_game in created_games %}
+        <div class="game-card suggested-game-card" onclick="openModal('{{ user_game.title }}', '{{ user_game.platform }}', '{{ user_game.genre or 'N/A' }}', '{% if user_game.suggestion and user_game.suggestion.status == 'approved' %}Approved{% else %}Pending{% endif %}', 'Your Creation', '{% if user_game.suggestion and user_game.suggestion.image %}static/uploads/{{ user_game.suggestion.image }}{% else %}{{ url_for('static', filename='logo.png') }}{% endif %}', '', '', 'true')">
+            <img src="{% if user_game.suggestion and user_game.suggestion.image %}static/uploads/{{ user_game.suggestion.image }}{% else %}{{ url_for('static', filename='logo.png') }}{% endif %}" alt="{{ user_game.title }}" class="game-image">
+            <div class="game-info">
+                <h3>{{ user_game.title }}</h3>
+                <p>{{ user_game.platform }}</p>
+                <p class="status">Status: {% if user_game.suggestion and user_game.suggestion.status == 'approved' %}<span class="approved">Approved</span>{% else %}<span class="pending">Pending</span>{% endif %}</p>
+                <p class="suggested-by">Created by: You</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% if not created_games %}
+        <p>You haven't created any games yet.</p>
+    {% endif %}
+
+    <!-- Modal for game details -->
+    <div id="gameModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div class="modal-body">
+                <div class="modal-image-section">
+                    <img id="modalImage" src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo" class="modal-image">
+                    <div class="modal-actions">
+                        <button id="modalSellLink" onclick="window.location.href=''" class="btn btn-warning btn-uniform">Sell Game</button>
+                        <button id="modalRateLink" onclick="window.location.href=''" class="btn btn-success btn-uniform">Rate & Review</button>
+                    </div>
+                </div>
+                <div class="modal-details">
+                    <h2 id="modalTitle"></h2>
+                    <p><strong>Platform:</strong> <span id="modalPlatform"></span></p>
+                    <p><strong>Genre:</strong> <span id="modalGenre"></span></p>
+                    <p><strong>Condition:</strong> <span id="modalStatus"></span></p>
+                    <p><strong>Purchase Price:</strong> <span id="modalPrice"></span></p>
+
+                    <!-- Ratings and Reviews Section -->
+                    <div class="modal-ratings">
+                        <h3>Ratings & Reviews</h3>
+                        <div id="modalRatingDisplay">
+                            <!-- Rating display will be populated by JavaScript -->
+                        </div>
+                        <div id="modalReviews">
+                            <!-- Reviews will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="modal-description">
+                        <h3>Installation Instructions</h3>
+                        <p>This game requires installation. Please follow these steps:</p>
+                        <ol>
+                            <li>Download the game installer from the official source.</li>
+                            <li>Run the installer as administrator.</li>
+                            <li>Follow the on-screen instructions to complete installation.</li>
+                            <li>Launch the game from your desktop or start menu.</li>
+                        </ol>
+                        <p><em>Note: System requirements may vary. Ensure your system meets the minimum requirements before installation.</em></p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    <main class="main-content">
-        <h1>My Game Library</h1>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="flash {{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        {% if purchased_games %}
-        <h2>Purchased Games</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Image</th>
-                    <th>Game Title</th>
-                    <th>Platform</th>
-                    <th>Genre</th>
-                    <th>Purchase Date</th>
-                    <th>Condition</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user_game in purchased_games %}
-                <tr>
-                    <td>
-                        {% if user_game.game and user_game.game.image %}
-                            <img src="{{ url_for('static', filename='uploads/' + user_game.game.image) }}" alt="GameSystem Logo" style="width: 50px; height: 50px; object-fit: cover;">
-                        {% else %}
-                            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo" style="width: 50px; height: 50px; object-fit: cover;">
-                        {% endif %}
-                    </td>
-                    <td>{{ user_game.game.title if user_game.game else user_game.title }}</td>
-                    <td>{{ user_game.game.platform if user_game.game else user_game.platform }}</td>
-                    <td>{{ user_game.game.genre if user_game.game else user_game.genre }}</td>
-                    <td>{{ user_game.purchase_date.strftime('%Y-%m-%d') }}</td>
-                    <td>{{ user_game.condition.title() }}</td>
-                    <td>
-                        {% if user_game.listed_for_sale %}
-                            Listed for Sale (₱{{ "%.2f"|format(user_game.sale_price) }})
-                        {% else %}
-                            Owned
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if not user_game.listed_for_sale %}
-                            {% if user_game.game %}
-                                <a href="{{ url_for('rate_game', game_id=user_game.game_id) }}" class="btn btn-small">Rate</a>
-                                {% if user_game.game.installation_file %}
-                                    <a href="/static/uploads/{{ user_game.game.installation_file }}" class="btn btn-small" download>Install</a>
-                                {% endif %}
-                            {% else %}
-                                Owned (Community)
-                            {% endif %}
-                        {% else %}
-                            Listed
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% endif %}
-
-        {% if created_games %}
-        <h2>My Created Games</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Image</th>
-                    <th>Game Title</th>
-                    <th>Platform</th>
-                    <th>Genre</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user_game in created_games %}
-                <tr>
-                    <td>
-                        {% if user_game.suggestion and user_game.suggestion.image %}
-                            <img src="static/uploads/{{ user_game.suggestion.image }}" alt="GameSystem Logo" style="width: 50px; height: 50px; object-fit: cover;">
-                        {% else %}
-                            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo" style="width: 50px; height: 50px; object-fit: cover;">
-                        {% endif %}
-                    </td>
-                    <td>{{ user_game.title }}</td>
-                    <td>{{ user_game.platform }}</td>
-                    <td>{{ user_game.genre }}</td>
-                    <td>
-                        {% if user_game.condition == 'approved' %}
-                            <span class="approved">Approved</span>
-                        {% elif user_game.condition == 'suggested' %}
-                            <span class="pending">Pending Approval</span>
-                        {% else %}
-                            {{ user_game.condition.title() }}
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if user_game.suggestion %}
-                            <a href="{{ url_for('edit_user_suggestion', suggestion_id=user_game.suggestion.id) }}" class="btn btn-small">Edit</a>
-                            <a href="{{ url_for('delete_suggestion', suggestion_id=user_game.suggestion.id) }}" class="btn btn-small remove-link" style="background-color: #dc3545; color: white;" onclick="return confirm('Are you sure you want to remove this suggestion?')">Remove</a>
-                        {% else %}
-                            No suggestion data available
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% endif %}
-
-        {% if not purchased_games and not created_games %}
-        <p>You don't own any games yet.</p>
-        {% endif %}
-
-    </main>
-{% endblock %}
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

@@ -23,7 +23,7 @@
         {% endwith %}
 
         <form method="POST" action="{{ url_for('add_game') }}">
-            {{ form.hidden_tag() }}  
+            {{ form.hidden_tag() }}  <!-- CSRF token -->
             <label for="title">Title:</label><br>
             {{ form.title(size=32) }}<br><br>
             <label for="platform">Platform:</label><br>
@@ -32,7 +32,7 @@
             {{ form.genre }}<br><br>
             <label for="quantity">Quantity:</label><br>
             {{ form.quantity(min=1) }}<br><br>
-            <label for="price">Price:</label><br>
+            <label for="price">Price (₱):</label><br>
             {{ form.price(step="0.01") }}<br><br>
             {{ form.submit() }}
         </form>

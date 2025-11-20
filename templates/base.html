@@ -12,7 +12,9 @@
 <body>
     {% block content %}{% endblock %}
 
+    <!-- Toast container will be created by JavaScript -->
     <script>
+        // Initialize lazy loading for images
         document.addEventListener('DOMContentLoaded', function() {
             const images = document.querySelectorAll('img[data-src]');
             const imageObserver = new IntersectionObserver((entries, observer) => {
@@ -29,6 +31,7 @@
             images.forEach(img => imageObserver.observe(img));
         });
 
+        // Add loading states to forms
         document.addEventListener('DOMContentLoaded', function() {
             const forms = document.querySelectorAll('form');
             forms.forEach(form => {

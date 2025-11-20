@@ -13,73 +13,65 @@
 <body>
     <header class="header-nav">
         <div class="logo">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="logo.png">
-            GameSystem
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
+            GameSystem Admin
         </div>
-        <div class="nav-links-right">
-            <a href="{{ url_for('admin') }}">Dashboard</a>
-            <a href="{{ url_for('user_management') }}">User Management</a>
-            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')">Logout</a>
+        <div class="nav-links">
+            <a href="{{ url_for('admin') }}">Admin Dashboard</a> | <a href="{{ url_for('logout') }}">Logout</a>
         </div>
     </header>
-    <h1 style="text-align: center; margin: 20px 0; color: #ffffff;">User Management</h1>
-    <div class="main-content">
-        <div class="card">
+    <div class="box">
+        <h1>User Management</h1>
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="flash {{ category }}">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-
-            <h2>Customer Accounts</h2>
-            {% if users %}
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Username</th>
-                            <th>Status</th>
-                            <th>Total Purchases</th>
-                            <th>Active Games</th>
-                            <th>Owned Games</th>
-                            <th>Listed for Sale</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for user in users %}
-                        <tr>
-                            <td>{{ user.username }}</td>
-                            <td>
-                                <span class="status-{{ user.role }}">
-                                    {{ user.role.title() }}
-                                </span>
-                            </td>
-                            <td>{{ user.total_purchases }}</td>
-                            <td>{{ user.active_purchases }}</td>
-                            <td>{{ user.total_purchases }}</td>
-                            <td>{{ user.active_purchases }}</td>
-                            <td>
-                                {% if user.role == 'customer' %}
-                                    <a href="{{ url_for('deactivate_user', username=user.username) }}" class="btn btn-warning btn-small" onclick="return confirm('Are you sure you want to deactivate this user?')">Deactivate</a>
-                                {% elif user.role == 'inactive' %}
-                                    <a href="{{ url_for('reactivate_user', username=user.username) }}" class="btn btn-success btn-small" onclick="return confirm('Are you sure you want to reactivate this user?')">Reactivate</a>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <p>No customer accounts found.</p>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
             {% endif %}
-
-
-        </div>
+        {% endwith %}
     </div>
+
+    <h2>Customer Accounts</h2>
+    {% if users %}
+    <table>
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Status</th>
+                <th>Total Purchases</th>
+                <th>Active Games</th>
+                <th>Owned Games</th>
+                <th>Listed for Sale</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.username }}</td>
+                <td>
+                    <span class="status-{{ user.role }}">
+                        {{ user.role.title() }}
+                    </span>
+                </td>
+                <td>{{ user.total_purchases }}</td>
+                <td>{{ user.active_purchases }}</td>
+                <td>{{ user.total_purchases }}</td>
+                <td>{{ user.active_purchases }}</td>
+                <td>
+                    {% if user.role == 'customer' %}
+                        <button type="button" class="btn btn-danger btn-uniform" onclick="if(confirm('Are you sure you want to deactivate this user?')) { window.location.href = '{{ url_for('deactivate_user', username=user.username) }}'; }">Deactivate</button>
+                    {% elif user.role == 'inactive' %}
+                        <button type="button" class="btn btn-success btn-uniform" onclick="if(confirm('Are you sure you want to reactivate this user?')) { window.location.href = '{{ url_for('reactivate_user', username=user.username) }}'; }">Reactivate</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No customer accounts found.</p>
+    {% endif %}
 </body>
 </html>

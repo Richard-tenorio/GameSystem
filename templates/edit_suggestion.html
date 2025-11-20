@@ -1,4 +1,4 @@
-e {% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}Edit Suggestion - GameSystem Admin{% endblock %}
 
@@ -25,8 +25,8 @@ e {% extends "base.html" %}
         margin-top: 30px;
     }
     .btn.cancel {
-        padding: 6px 12px;
-        font-size: 12px;
+        padding: 8px 16px;
+        font-size: 14px;
         margin-left: 10px;
     }
     .file-input-wrapper {
@@ -73,7 +73,7 @@ e {% extends "base.html" %}
 {% block content %}
 <header class="header-nav">
     <div class="logo">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="logo.png">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
         GameSystem Admin
     </div>
     <div class="nav-links">
@@ -177,10 +177,8 @@ e {% extends "base.html" %}
                 <label><input type="checkbox" name="confirm" required> Confirm suggestion update</label>
             </div>
 
-            <button type="submit" style="padding: 6px 12px; font-size: 12px;"><i class="fas fa-save icon" aria-hidden="true"></i>Update Suggestion</button>
-            <a href="{{ url_for('admin') }}" class="btn" style="padding: 6px 12px; font-size: 12px; margin-left: 10px;">Cancel</a>
-            <button type="submit" style="padding: 6px 12px; font-size: 12px;"><i class="fas fa-save icon" aria-hidden="true"></i>Update Suggestion</button>
-            <a href="{{ url_for('admin') }}" style="padding: 6px 12px; font-size: 12px; margin-left: 10px;">Cancel</a>
+            <button type="submit"><i class="fas fa-save icon" aria-hidden="true"></i>Update Suggestion</button>
+            <a href="{{ url_for('admin') }}" class="btn cancel">Cancel</a>
         </form>
     </div>
 </main>

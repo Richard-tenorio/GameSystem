@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sale Game - GameSystem</title>
+    <title>Sell Game - GameSystem</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
         .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
@@ -12,8 +13,19 @@
     </style>
 </head>
 <body>
+    <header class="header-nav">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo" style="height: 40px; vertical-align: middle;">
+            GameSystem
+        </div>
+        <div class="nav-links">
+            <a href="{{ url_for('customer') }}"><i class="fas fa-gamepad icon"></i>Browse New Games</a>
+            <a href="{{ url_for('profile') }}"><i class="fas fa-user icon"></i>Profile</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+        </div>
+    </header>
     <div class="box">
-        <h1>GameSystem - Sale Game</h1>
+        <h1>GameSystem - Sell Game</h1>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -40,7 +52,6 @@
         </form>
 
         <p><a href="{{ url_for('profile') }}" class="btn secondary">Cancel</a></p>
-        <p><a href="{{ url_for('customer') }}">Browse New Games</a> | <a href="{{ url_for('marketplace') }}">Marketplace</a> | <a href="{{ url_for('profile') }}">Profile</a> | <a href="{{ url_for('logout') }}">Logout</a></p>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>

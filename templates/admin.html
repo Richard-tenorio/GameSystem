@@ -25,27 +25,35 @@
             min-width: 18px;
             text-align: center;
         }
+        .topup-notification-link { position: relative; color: #17a2b8 !important; }
     </style>
 </head>
 <body>
     <header class="header-nav">
         <div class="logo">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="logo.png">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
             GameSystem Admin
         </div>
         <div class="nav-links">
-            <a href="{{ url_for('user_management') }}"><i class="fas fa-users icon"></i>User Management</a>
             {% if pending_count > 0 %}
             <a href="{{ url_for('manage_suggestions') }}" class="notification-link">
                 <i class="fas fa-bell icon"></i>Suggestions
                 <span class="notification-badge">{{ pending_count }}</span>
             </a>
             {% else %}
-            <a href="{{ url_for('admin_games') }}"><i class="fas fa-boxes icon"></i>Manage Games</a>
             <a href="{{ url_for('manage_suggestions') }}"><i class="fas fa-list icon"></i>Suggestions</a>
             {% endif %}
+            {% if pending_topup_count > 0 %}
+            <a href="{{ url_for('manage_topup_requests') }}" class="topup-notification-link">
+                <i class="fas fa-money-bill-wave icon"></i>Top-ups
+                <span class="notification-badge">{{ pending_topup_count }}</span>
+            </a>
+            {% else %}
+            <a href="{{ url_for('manage_topup_requests') }}"><i class="fas fa-money-bill-wave icon"></i>Top-ups</a>
+            {% endif %}
+            <a href="{{ url_for('user_management') }}"><i class="fas fa-users icon"></i>User Management</a>
             <a href="{{ url_for('admin_settings') }}"><i class="fas fa-cog icon"></i>Settings</a>
-            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')" class="logout-btn"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
         </div>
     </header>
     <main class="main-content">
@@ -87,178 +95,108 @@
             <p>{{ active_users }}</p>
         </div>
         <div class="stat-item">
-            <h3>Pending Suggestions</h3>
-            <p>{{ pending_count }}</p>
-        </div>
-        <div class="stat-item">
-            <h3>System Status</h3>
-            <p style="color: green;">Online</p>
+            <h3>Pending Top-ups</h3>
+            <p>{{ pending_topup_count }}</p>
         </div>
             </div>
         </div>
     </section>
 
+
+
     <section class="section">
         <div class="card">
-            <h2><i class="fas fa-users icon"></i>User Management</h2>
-            <table>
-        <tr>
-            <th>Username</th>
-            <th>Role</th>
-            <th>Balance</th>
-            <th>Actions</th>
-        </tr>
-        {% for user in users %}
-        <tr>
-            <td>{{ user.username }}</td>
-            <td>{{ user.role }}</td>
-            <td>₱{{ "%.2f"|format(user.balance) }}</td>
-            <td><a href="{{ url_for('add_credits', username=user.username) }}">Add Credits</a></td>
-        </tr>
-        {% endfor %}
-            </table>
-            <p><a href="{{ url_for('user_management') }}">Full User Management</a></p>
-        </div>
-    </section>
-
-    <section class="section">
-        <div class="card" style="max-width: 1400px;">
             <h2><i class="fas fa-plus-circle icon"></i>Add New Game</h2>
             <form method="post" action="{{ url_for('add_game') }}" enctype="multipart/form-data">
-                <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 200px;">
-                        <label for="title" style="display: block; margin-bottom: 5px; font-weight: bold;">Game Title *</label>
-                        <input type="text" id="title" name="title" placeholder="Game Title" value="{{ request.form.title or '' }}" style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background: #2a2a2a; color: #f0f0f0;">
-                        {% if errors.title %}<div class="error-text">{{ errors.title }}</div>{% endif %}
-                    </div>
+        <input type="text" name="title" placeholder="Game Title" value="{{ request.form.title or '' }}">
+        {% if errors.title %}<div class="error-text">{{ errors.title }}</div>{% endif %}
 
-                    <div style="flex: 1; min-width: 200px;">
-                        <label for="genre" style="display: block; margin-bottom: 5px; font-weight: bold;">Genre *</label>
-                        <select id="genre" name="genre" style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background: #2a2a2a; color: #f0f0f0;">
-                            <option value="">Select Genre</option>
-                            {% for genre in ['Action','Adventure','RPG','Strategy','Sports','Racing','Simulation','Puzzle','Horror','Fighting'] %}
-                                <option value="{{ genre }}" {% if request.form.genre == genre %}selected{% endif %}>{{ genre }}</option>
-                            {% endfor %}
-                        </select>
-                        {% if errors.genre %}<div class="error-text">{{ errors.genre }}</div>{% endif %}
-                    </div>
+        <select name="platform">
+            <option value="">Select Platform</option>
+            {% for platform_option in platforms %}
+                <option value="{{ platform_option }}" {% if request.form.platform == platform_option %}selected{% endif %}>{{ platform_option }}</option>
+            {% endfor %}
+        </select>
+        {% if errors.platform %}<div class="error-text">{{ errors.platform }}</div>{% endif %}
 
-                    <div style="flex: 1; min-width: 200px;">
-                        <label for="platform" style="display: block; margin-bottom: 5px; font-weight: bold;">Platform *</label>
-                        <select id="platform" name="platform" style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background: #2a2a2a; color: #f0f0f0;">
-                            <option value="">Select Platform</option>
-                            {% for platform_option in platforms %}
-                                <option value="{{ platform_option }}" {% if request.form.platform == platform_option %}selected{% endif %}>{{ platform_option }}</option>
-                            {% endfor %}
-                        </select>
-                        {% if errors.platform %}<div class="error-text">{{ errors.platform }}</div>{% endif %}
-                    </div>
-                </div>
+        <select name="genre">
+            <option value="">Select Genre</option>
+            {% for genre in ['Action','Adventure','RPG','Strategy','Sports','Racing','Simulation','Puzzle','Horror','Fighting'] %}
+                <option value="{{ genre }}" {% if request.form.genre == genre %}selected{% endif %}>{{ genre }}</option>
+            {% endfor %}
+        </select>
+        {% if errors.genre %}<div class="error-text">{{ errors.genre }}</div>{% endif %}
 
-                <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 150px;">
-                        <label for="quantity" style="display: block; margin-bottom: 5px; font-weight: bold;">Quantity *</label>
-                        <input type="number" id="quantity" name="quantity" placeholder="Quantity" value="{{ request.form.quantity or '' }}" style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background: #2a2a2a; color: #f0f0f0;">
-                        {% if errors.quantity %}<div class="error-text">{{ errors.quantity }}</div>{% endif %}
-                    </div>
+        <input type="number" name="quantity" placeholder="Quantity" value="{{ request.form.quantity or '' }}">
+        {% if errors.quantity %}<div class="error-text">{{ errors.quantity }}</div>{% endif %}
 
-                    <div style="flex: 1; min-width: 150px;">
-                        <label for="price" style="display: block; margin-bottom: 5px; font-weight: bold;">Price *</label>
-                        <input type="number" id="price" step="0.01" name="price" placeholder="Price (e.g., 59.99)" value="{{ request.form.price or '' }}" style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background: #2a2a2a; color: #f0f0f0;">
-                        {% if errors.price %}<div class="error-text">{{ errors.price }}</div>{% endif %}
-                    </div>
-                </div>
+        <input type="number" step="0.01" name="price" placeholder="Price (e.g., 59.99)" value="{{ request.form.price or '' }}">
+        {% if errors.price %}<div class="error-text">{{ errors.price }}</div>{% endif %}
 
-                <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 180px;">
-                        <label for="image" style="display: block; margin-bottom: 5px; font-weight: bold;">Game Image *</label>
-                        <input type="file" id="image" name="image" accept="image/*" required style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background: #2a2a2a; color: #f0f0f0;">
-                        <small style="display: block; margin-top: 2px; font-size: 12px; color: #888;">PNG, JPG, JPEG, GIF, WebP</small>
-                        {% if errors.image %}<div class="error-text">{{ errors.image }}</div>{% endif %}
-                    </div>
+        <input type="file" name="image" accept="image/*" required>
+        {% if errors.image %}<div class="error-text">{{ errors.image }}</div>{% endif %}
 
-                    <div style="flex: 1; min-width: 180px;">
-                        <label for="installation_file" style="display: block; margin-bottom: 5px; font-weight: bold;">Installation File</label>
-                        <input type="file" id="installation_file" name="installation_file" accept=".exe,.msi,.zip,.rar,.7z,.bat,.cmd,.txt" style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background: #2a2a2a; color: #f0f0f0;">
-                        <small style="display: block; margin-top: 2px; font-size: 12px; color: #888;">Optional: EXE, MSI, ZIP, RAR, 7Z, BAT, CMD, TXT</small>
-                    </div>
-                </div>
+        <label><input type="checkbox" name="confirm" required> Confirm add game</label>
 
-                <div style="display: flex; gap: 15px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center;">
-                        <label style="display: flex; align-items: center; margin: 0;">
-                            <input type="checkbox" name="confirm" required style="margin-right: 8px;">
-                            Confirm add game
-                        </label>
-                    </div>
-
-                    <div>
-                        <button type="submit" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;"><i class="fas fa-plus icon"></i>Add Game</button>
-                    </div>
-                </div>
+                <button type="submit"><i class="fas fa-plus icon"></i>Add Game</button>
             </form>
         </div>
     </section>
 
+
+
     <section class="section">
-        <div class="card">
-            <h2><i class="fas fa-boxes icon"></i>Official Game Inventory</h2>
-            <table>
-        <tr>
-            <th>Image</th>
-            <th>Title</th>
-            <th>Platform</th>
-            <th>Genre</th>
-            <th>Available</th>
-            <th>Sold</th>
-            <th>Price</th>
-            <th>Actions</th>
-        </tr>
+        <h2><i class="fas fa-boxes icon"></i>Official Game Inventory</h2>
+        <table>
+    <tr>
+        <th>Image</th>
+        <th>Title</th>
+        <th>Platform</th>
+        <th>Genre</th>
+        <th>Available</th>
+        <th>Sold</th>
+        <th>Price</th>
+        <th>Actions</th>
+    </tr>
 
-        {% for game in games %}
-        <tr>
-            <td>
-                {% if game.image %}
-                    <img src="{{ url_for('static', filename='uploads/' + game.image) }}" alt="{{ game.title }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
-                {% else %}
-                    <span style="color: #666;">No image</span>
-                {% endif %}
-            </td>
-            <td>{{ game.title }}</td>
-            <td>{{ game.platform }}</td>
-            <td>{{ game.genre }}</td>
-            <td>{{ game.quantity }}</td>
-            <td>{{ game.sold_count }}</td>
-            <td>₱{{ "%.2f"|format(game.price) }}</td>
+    {% for game in games %}
+    <tr>
+        <td><img src="{{ url_for('static', filename='uploads/' + game.image) }}" alt="{{ game.title }}" style="width: 50px; height: 50px; object-fit: cover;"></td>
+        <td>{{ game.title }}</td>
+        <td>{{ game.platform }}</td>
+        <td>{{ game.genre }}</td>
+        <td>{{ game.quantity }}</td>
+        <td>{{ game.sold_count }}</td>
+        <td>₱{{ "%.2f"|format(game.price) }}</td>
 
-            <td>
-                <a href="{{ url_for('edit_game', game_id=game.id) }}" style="margin-right: 5px; background-color: #007bff; color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none;">Edit</a>
-                <a href="{{ url_for('remove_game', game_id=game.id) }}" class="remove-link" style="margin-left: 10px; background-color: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none;">Remove</a>
-            </td>
-        </tr>
-        {% endfor %}
-            </table>
+        <td>
+            <button type="button" class="btn btn-success btn-uniform" onclick="window.location.href='{{ url_for('edit_game', game_id=game.id) }}'">Edit</button>
+            <button type="button" class="btn btn-danger btn-uniform" onclick="if(confirm('Are you sure you want to remove this game?')) window.location.href='{{ url_for('remove_game', game_id=game.id) }}'">Remove</button>
+        </td>
+    </tr>
+    {% endfor %}
+        </table>
 
-            {% if total_pages > 1 %}
-            <div class="pagination">
-        {% if page > 1 %}
-        <a href="{{ url_for('admin', page=page-1) }}">&laquo; Previous</a>
-        {% endif %}
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <div class="pagination">
+    {% if page > 1 %}
+    <a href="{{ url_for('admin', page=page-1) }}">&laquo; Previous</a>
+    {% endif %}
 
-        {% for page_num in range(1, total_pages + 1) %}
-        {% if page_num == page %}
-        <span class="current-page">{{ page_num }}</span>
-        {% else %}
-        <a href="{{ url_for('admin', page=page_num) }}">{{ page_num }}</a>
-        {% endif %}
-        {% endfor %}
+    {% for page_num in range(1, total_pages + 1) %}
+    {% if page_num == page %}
+    <span class="current-page">{{ page_num }}</span>
+    {% else %}
+    <a href="{{ url_for('admin', page=page_num) }}">{{ page_num }}</a>
+    {% endif %}
+    {% endfor %}
 
-        {% if page < total_pages %}
-        <a href="{{ url_for('admin', page=page+1) }}">Next &raquo;</a>
-        {% endif %}
-            </div>
-            {% endif %}
+    {% if page < total_pages %}
+    <a href="{{ url_for('admin', page=page+1) }}">Next &raquo;</a>
+    {% endif %}
         </div>
+        {% endif %}
     </section>
 
     <section class="section">
@@ -266,10 +204,10 @@
             <h2><i class="fas fa-users icon"></i>Community Games</h2>
             <table>
         <tr>
-            <th>Image</th>
             <th>Title</th>
             <th>Platform</th>
             <th>Genre</th>
+            <th>Price</th>
             <th>Suggested By</th>
             <th>Status</th>
             <th>Actions</th>
@@ -277,21 +215,14 @@
 
         {% for suggestion in approved_suggestions %}
         <tr>
-            <td>
-                {% if suggestion.image %}
-                    <img src="{{ url_for('static', filename='uploads/' + suggestion.image) }}" alt="{{ suggestion.title }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
-                {% else %}
-                    <span style="color: #666;">No image</span>
-                {% endif %}
-            </td>
             <td>{{ suggestion.title }}</td>
             <td>{{ suggestion.platform }}</td>
             <td>{{ suggestion.genre }}</td>
+            <td>₱{{ "%.2f"|format(suggestion.price) }}</td>
             <td>{{ suggestion.suggested_by }}</td>
             <td><span style="color: green;">Approved</span></td>
             <td>
-                <span style="color: #666; font-style: italic;">View Only</span>
-                <a href="{{ url_for('reject_suggestion', suggestion_id=suggestion.id) }}" class="remove-link" style="margin-left: 10px; background-color: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none;">Remove</a>
+                <a href="{{ url_for('reject_suggestion', suggestion_id=suggestion.id) }}" class="remove-link">Remove</a>
             </td>
         </tr>
         {% endfor %}
