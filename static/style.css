@@ -1,0 +1,161 @@
+/* Dark theme for GameHub */
+body {
+    background-color: #121212;
+    color: #ffffff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    background-color: #1e1e1e;
+    padding: 1rem 0;
+    border-bottom: 1px solid #333;
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+nav a {
+    color: #ffffff;
+    text-decoration: none;
+    margin: 0 15px;
+    transition: color 0.3s;
+}
+
+nav a:hover {
+    color: #4CAF50;
+}
+
+.btn {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: background-color 0.3s;
+}
+
+.btn:hover {
+    background-color: #45a049;
+}
+
+.btn-danger {
+    background-color: #f44336;
+}
+
+.btn-danger:hover {
+    background-color: #da190b;
+}
+
+.card {
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #ffffff;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background-color: #2a2a2a;
+    color: #ffffff;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    background-color: #1e1e1e;
+}
+
+table th,
+table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #333;
+}
+
+table th {
+    background-color: #2a2a2a;
+    color: #ffffff;
+}
+
+.alert {
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 4px;
+}
+
+.alert-success {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.alert-error {
+    background-color: #f44336;
+    color: white;
+}
+
+footer {
+    text-align: center;
+    padding: 20px;
+    background-color: #1e1e1e;
+    color: #888;
+    margin-top: 40px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    nav {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    nav a {
+        margin: 10px 0;
+    }
+
+    .container {
+        padding: 10px;
+    }
+}
