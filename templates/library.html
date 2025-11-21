@@ -5,6 +5,21 @@
     <title>Library - GameSystem</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <!-- Font Awesome removed for offline compatibility -->
+    <style>
+        .edit-link {
+            background-color: #007bff;
+            color: white;
+            border: 1px solid #007bff;
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .edit-link:hover {
+            background-color: #007bff;
+            color: white;
+        }
+    </style>
 </head>
 <body>
     <header class="header-nav">
@@ -37,7 +52,7 @@
     {% if purchased_games %}
         <div class="games-grid">
             {% for user_game in purchased_games %}
-            <div class="game-card" onclick="openModal('{{ user_game.game.title }}', '{{ user_game.game.platform }}', '{{ user_game.game.genre or 'N/A' }}', '{{ user_game.condition }}', '{{ "%.2f"|format(user_game.game.price) }}', '{{ user_game.game.image }}', '{{ url_for('sale', user_game_id=user_game.id) }}', '{{ url_for('rate_game', game_id=user_game.game.id) }}', 'true', '{{ user_game.game.id }}')">
+            <div class="game-card" onclick="openModal('{{ user_game.game.title }}', '{{ user_game.game.platform }}', '{{ user_game.game.genre or 'N/A' }}', '{{ user_game.condition }}', '{{ "%.2f"|format(user_game.game.price) }}', '{{ user_game.game.image }}', '{{ url_for('sale', user_game_id=user_game.id) }}', '{{ url_for('rate_game', game_id=user_game.game.id) }}', 'true', '{{ user_game.game.id }}', '')">
                 <img src="{% if user_game.game.image %}static/uploads/{{ user_game.game.image }}{% else %}{{ url_for('static', filename='logo.png') }}{% endif %}" alt="{{ user_game.game.title }}" class="game-image">
                 <div class="game-info">
                     <h3>{{ user_game.game.title }}</h3>
@@ -77,13 +92,16 @@
     <h2>My Created Games</h2>
     <div class="games-grid">
         {% for user_game in created_games %}
-        <div class="game-card suggested-game-card" onclick="openModal('{{ user_game.title }}', '{{ user_game.platform }}', '{{ user_game.genre or 'N/A' }}', '{% if user_game.suggestion and user_game.suggestion.status == 'approved' %}Approved{% else %}Pending{% endif %}', 'Your Creation', '{% if user_game.suggestion and user_game.suggestion.image %}static/uploads/{{ user_game.suggestion.image }}{% else %}{{ url_for('static', filename='logo.png') }}{% endif %}', '', '', 'true')">
+        <div class="game-card suggested-game-card" onclick="openModal('{{ user_game.title }}', '{{ user_game.platform }}', '{{ user_game.genre or 'N/A' }}', '{% if user_game.suggestion and user_game.suggestion.status == 'approved' %}Approved{% else %}Pending{% endif %}', 'Your Creation', '{% if user_game.suggestion and user_game.suggestion.image %}static/uploads/{{ user_game.suggestion.image }}{% else %}{{ url_for('static', filename='logo.png') }}{% endif %}', '', '', 'false', '', '{% if user_game.suggestion %}{{ url_for('edit_user_suggestion', suggestion_id=user_game.suggestion.id) }}{% endif %}')">
             <img src="{% if user_game.suggestion and user_game.suggestion.image %}static/uploads/{{ user_game.suggestion.image }}{% else %}{{ url_for('static', filename='logo.png') }}{% endif %}" alt="{{ user_game.title }}" class="game-image">
             <div class="game-info">
                 <h3>{{ user_game.title }}</h3>
                 <p>{{ user_game.platform }}</p>
                 <p class="status">Status: {% if user_game.suggestion and user_game.suggestion.status == 'approved' %}<span class="approved">Approved</span>{% else %}<span class="pending">Pending</span>{% endif %}</p>
                 <p class="suggested-by">Created by: You</p>
+                {% if user_game.suggestion %}
+                <a href="{{ url_for('edit_user_suggestion', suggestion_id=user_game.suggestion.id) }}" style="background-color: #007bff; color: white; border: 1px solid #007bff; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block;">Edit</a>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
@@ -102,6 +120,7 @@
                     <div class="modal-actions">
                         <button id="modalSellLink" onclick="window.location.href=''" class="btn btn-warning btn-uniform">Sell Game</button>
                         <button id="modalRateLink" onclick="window.location.href=''" class="btn btn-success btn-uniform">Rate & Review</button>
+                        <button id="modalEditLink" onclick="window.location.href=''" class="btn btn-primary btn-uniform">Edit Game</button>
                     </div>
                 </div>
                 <div class="modal-details">

@@ -2,85 +2,157 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Profile - GameHub</title>
+    <title>Profile - GameSystem</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Font Awesome removed for offline compatibility -->
+    <style>
+        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
 </head>
 <body>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <ul class="flashes">
-                {% for category, message in messages %}
-                    <li class="{{ category }}">{{ message }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
-    {% endwith %}
-
-    <header>
-        <h1>Welcome {{ session['username'] }}</h1>
-        <nav>
-            <a href="{{ url_for('customer') }}">Home</a> |
-            <a href="{{ url_for('marketplace') }}">Marketplace</a> |
-            <a href="{{ url_for('logout') }}">Logout</a>
-        </nav>
+    <header class="header-nav">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
+            GameSystem
+        </div>
+        <div class="nav-links">
+            <a href="{{ url_for('customer') }}">Browse Games</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')">Logout</a>
+        </div>
     </header>
+    <main class="main-content">
+        <h1>Welcome {{ session['username'] }}</h1>
 
-    <section class="box">
-        <h2>Change Password</h2>
-        <form method="post" action="{{ url_for('profile') }}">
-            <label>Current Password</label>
-            <input type="password" name="current_password" required>
-            <label>New Password</label>
-            <input type="password" name="new_password" required>
-            <label>Confirm New Password</label>
-            <input type="password" name="confirm_password" required>
-            <button type="submit">Update Password</button>
-        </form>
-    </section>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-    <section>
-        <h2>Your Purchases</h2>
+        <section class="section">
+            <div class="card">
+                <h2>Account Overview</h2>
+                <p><strong>Username:</strong> {{ session['username'] }}</p>
+                <p><strong>Role:</strong> {{ session['role'].title() }}</p>
+                <p><strong>Current Balance:</strong> ₱{{ "%.2f"|format(user_balance) }}</p>
+                <p><a href="{{ url_for('settings') }}" class="btn">Account Settings</a></p>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="card">
+                <h2>Purchase History</h2>
         {% if purchases %}
-            <ul>
-                {% for p in purchases %}
-                    <li>{{ p.Game.title if p.Game }} — {{ p.purchase_date }} — {{ p.condition }} — {{ "%.2f"|format(p.price_paid) if p.price_paid is not none else "-" }}</li>
+        <table>
+            <thead>
+                <tr>
+                    <th>Game Title</th>
+                    <th>Platform</th>
+                    <th>Genre</th>
+                    <th>Purchase Date</th>
+                    <th>Condition</th>
+                    <th>Price Paid</th>
+                    <th>Seller</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for purchase in purchases %}
+                <tr>
+                    <td>{{ purchase.game.title }}</td>
+                    <td>{{ purchase.game.platform }}</td>
+                    <td>{{ purchase.game.genre }}</td>
+                    <td>{{ purchase.purchase_date.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ purchase.condition.title() }}</td>
+                    <td>₱{{ "%.2f"|format(purchase.price_paid) }}</td>
+                    <td>{{ purchase.seller_username or 'Store' }}</td>
+                </tr>
                 {% endfor %}
-            </ul>
+            </tbody>
+        </table>
         {% else %}
-            <p>No purchases yet.</p>
+        <p>You haven't purchased any games yet.</p>
         {% endif %}
-    </section>
 
-    <section>
-        <h2>Your Owned Games</h2>
-        {% if user_games %}
-            <ul>
-                {% for ug in user_games %}
-                    <li>{{ ug.Game.title if ug.Game }} — Purchased {{ ug.purchase_date }} —
-                        {% if ug.listed_for_sale %}
-                            Listed for {{ "%.2f"|format(ug.sale_price) if ug.sale_price is not none else "-" }}
-                        {% else %}
-                            <a href="{{ url_for('sell', user_game_id=ug.id) }}">List for sale</a>
-                        {% endif %}
-                    </li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p>You don't own any games yet.</p>
-        {% endif %}
-    </section>
+        <p><a href="{{ url_for('library') }}">View My Game Library</a></p>
+            </div>
+        </section>
 
-    <section>
-        <h2>Your Ratings & Reviews</h2>
+        <section class="section">
+            <div class="card">
+                <h2>My Reviews & Ratings</h2>
         {% if ratings %}
-            <ul>
-                {% for r in ratings %}
-                    <li>{{ r.title }} — Rating: {{ r.rating }} — {{ r.date }}<br>{{ r.review }}</li>
+        <table>
+            <thead>
+                <tr>
+                    <th>Game Title</th>
+                    <th>Platform</th>
+                    <th>Rating</th>
+                    <th>Review</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rating in ratings %}
+                <tr>
+                    <td>{{ rating.game.title }}</td>
+                    <td>{{ rating.game.platform }}</td>
+                    <td>
+                        {% for i in range(5) %}
+                            {% if i < rating.rating %}
+                                ★
+                            {% else %}
+                                ☆
+                            {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>{{ rating.review or 'No review' }}</td>
+                    <td>{{ rating.date.strftime('%Y-%m-%d %H:%M') }}</td>
+                </tr>
                 {% endfor %}
-            </ul>
+            </tbody>
+        </table>
         {% else %}
-            <p>No ratings yet.</p>
+        <p>You haven't rated any games yet.</p>
         {% endif %}
-    </section>
+            </div>
+        </section>
+
+    </main>
 </body>
 </html>
+<script>
+    function validatePassword() {
+        const password = document.getElementById('password').value;
+        const errorDiv = document.getElementById('password-error');
+        const errors = [];
+
+        if (password.length < 8) {
+            errors.push('Password must be at least 8 characters long.');
+        }
+        if (!/[A-Z]/.test(password)) {
+            errors.push('Password must contain at least one uppercase letter.');
+        }
+        if (!/[a-z]/.test(password)) {
+            errors.push('Password must contain at least one lowercase letter.');
+        }
+        if (!/\d/.test(password)) {
+            errors.push('Password must contain at least one digit.');
+        }
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+            errors.push('Password must contain at least one special character (e.g., @, #, !).');
+        }
+
+        if (errors.length > 0) {
+            errorDiv.innerHTML = errors.join('<br>');
+            errorDiv.style.display = 'block';
+            return false;
+        } else {
+            errorDiv.style.display = 'none';
+            return true;
+        }
+    }
+</script>

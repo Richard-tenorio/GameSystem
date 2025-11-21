@@ -287,7 +287,7 @@ def admin():
         return redirect(url_for("login"))
 
     page = int(request.args.get('page', 1))
-    per_page = 10
+    per_page = 5
     offset = (page - 1) * per_page
 
     page_suggestions = int(request.args.get('page_suggestions', 1))
@@ -346,6 +346,9 @@ def admin():
         print(f"Dashboard error: {e}")
         flash("Error loading dashboard.", "error")
         # Variables already initialized to defaults
+
+    if pending_count > 0:
+        flash(f"You have {pending_count} pending game suggestion(s) to review.", "info")
 
     return render_template("admin.html", games=games, users=users, total_games=total_games, sold_games=sold_games, total_revenue=total_revenue, total_users=total_users, active_users=active_users, approved_suggestions=approved_suggestions, platforms=PLATFORMS, page=page, total_pages=total_pages, page_suggestions=page_suggestions, total_pages_suggestions=total_pages_suggestions, total_suggestions_count=total_suggestions_count, errors={}, pending_count=pending_count, pending_topup_count=pending_topup_count)
 
@@ -443,7 +446,7 @@ def add_game():
             return redirect(url_for("admin"))
 
         allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'jfif'}
-        if not ('.' in image_file.filename and image_file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
+        if '.' not in image_file.filename or image_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
             flash("Invalid image file type. Please upload PNG, JPG, JPEG, GIF, WebP, or JFIF.", "error")
             return redirect(url_for("admin"))
 
@@ -527,8 +530,15 @@ def user_management():
     if "username" not in session or session["role"] != "admin":
         return redirect(url_for("login"))
 
+    page = int(request.args.get('page', 1))
+    per_page = 10
+    offset = (page - 1) * per_page
+
     try:
-        users = User.query.filter(User.role.in_(['customer', 'inactive'])).order_by(User.username).all()
+        total_users_count = User.query.filter(User.role.in_(['customer', 'inactive'])).count()
+        total_pages = (total_users_count + per_page - 1) // per_page
+
+        users = User.query.filter(User.role.in_(['customer', 'inactive'])).order_by(User.username).offset(offset).limit(per_page).all()
 
         for user in users:
             total_purchases = Purchase.query.filter_by(username=user.username).count()
@@ -538,8 +548,10 @@ def user_management():
     except Exception as e:
         flash("Error loading user management.", "error")
         users = []
+        total_pages = 0
+        page = 1
 
-    return render_template("user_management.html", users=users)
+    return render_template("user_management.html", users=users, page=page, total_pages=total_pages)
 
 @app.route("/deactivate_user/<username>")
 def deactivate_user(username):
@@ -624,7 +636,7 @@ def change_logo():
         return redirect(url_for("admin"))
 
     allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-    if not ('.' in logo_file.filename and logo_file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
+    if '.' not in logo_file.filename or logo_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
         flash("Invalid logo file type. Please upload PNG, JPG, JPEG, GIF, or WebP.", "error")
         return redirect(url_for("admin"))
 
@@ -727,7 +739,7 @@ def approve_topup(request_id):
                 if user:
                     user.balance += topup_request.amount
                     topup_request.status = 'approved'
-                    topup_request.date_processed = datetime.datetime.now(datetime.timezone.utc)
+                    topup_request.date_processed = datetime.utcnow()
                     topup_request.processed_by = session["username"]
 
 
@@ -750,7 +762,7 @@ def reject_topup(request_id):
             topup_request = TopupRequest.query.get(request_id)
             if topup_request and topup_request.status == 'pending':
                 topup_request.status = 'rejected'
-                topup_request.date_processed = datetime.datetime.now(datetime.timezone.utc)
+                topup_request.date_processed = datetime.utcnow()
                 topup_request.processed_by = session["username"]
                 db.session.commit()
                 flash("Top-up request rejected.", "success")
@@ -975,7 +987,7 @@ def edit_suggestion(suggestion_id):
 
                 allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'jfif'}
 
-                if not ('.' in image_file.filename and image_file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
+                if '.' not in image_file.filename or image_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
 
                     flash("Invalid image file type. Please upload PNG, JPG, JPEG, GIF, WebP, or JFIF.", "error")
                     return render_template("edit_suggestion.html", suggestion=suggestion)
@@ -1009,7 +1021,7 @@ def customer():
         return redirect(url_for("login"))
 
     page = int(request.args.get('page', 1))
-    per_page = 12
+    per_page = 5
     offset = (page - 1) * per_page
 
     search = request.args.get('search', '')
@@ -1045,6 +1057,9 @@ def customer():
 
         for game in official_games:
             game.is_owned = UserGame.query.filter_by(username=session["username"], game_id=game.id).first() is not None
+            # Check if image file exists, else set to None for fallback
+            if game.image and not os.path.exists(os.path.join('static', 'uploads', game.image)):
+                game.image = None
 
         used_query = UserGame.query.filter_by(listed_for_sale=True).filter(UserGame.game_id.isnot(None)).join(Game)
 
@@ -1058,6 +1073,11 @@ def customer():
             used_query = used_query.filter(Game.genre == genre_filter)
 
         user_games = used_query.order_by(UserGame.purchase_date).all()
+
+        # Check image existence for used games
+        for user_game in user_games:
+            if user_game.game.image and not os.path.exists(os.path.join('static', 'uploads', user_game.game.image)):
+                user_game.game.image = None
 
         genres = [g[0] for g in db.session.query(Game.genre).distinct().all()]
         platforms = [p[0] for p in db.session.query(Game.platform).distinct().all()]
@@ -1074,6 +1094,11 @@ def customer():
             community_query = community_query.filter_by(genre=genre_filter)
 
         approved_suggestions = community_query.order_by(GameSuggestion.date_suggested.desc()).all()
+
+        # Check image existence for community games
+        for suggestion in approved_suggestions:
+            if suggestion.image and not os.path.exists(os.path.join('static', 'uploads', suggestion.image)):
+                suggestion.image = None
 
     except Exception as e:
         flash(f"Error loading games: {re.escape(str(e))}", "error")
@@ -1271,7 +1296,7 @@ def process_purchase(game_id):
                 sale_user_game.condition = 'used'
                 sale_user_game.listed_for_sale = False
                 sale_user_game.sale_price = None
-                sale_user_game.purchase_date = datetime.datetime.now(datetime.timezone.utc)
+                sale_user_game.purchase_date = datetime.utcnow()
 
             db.session.commit()
             flash("Game purchased successfully.", "success")
@@ -1304,6 +1329,53 @@ def profile():
         user_balance = 0.0
 
     return render_template("profile.html", purchases=purchases, ratings=ratings, user_balance=user_balance)
+
+@app.route("/transactions")
+def transactions():
+    if "username" not in session or session["role"] != "customer":
+        return redirect(url_for("login"))
+
+    try:
+        user = User.query.filter_by(username=session["username"]).first()
+        user_balance = user.balance if user else 0.0
+    except Exception as e:
+        user_balance = 0.0
+
+    # Get purchase transactions
+    purchase_transactions = []
+    try:
+        purchases = Purchase.query.filter_by(username=session["username"]).join(Game).order_by(Purchase.purchase_date.desc()).all()
+        for purchase in purchases:
+            purchase_transactions.append({
+                'date': purchase.purchase_date,
+                'type': 'Purchase',
+                'description': f'Purchased {purchase.game.title}',
+                'amount': -purchase.price_paid,
+                'status': 'Completed'
+            })
+    except Exception as e:
+        pass
+
+    # Get topup transactions
+    topup_transactions = []
+    try:
+        topups = TopupRequest.query.filter_by(username=session["username"], status='approved').order_by(TopupRequest.date_processed.desc()).all()
+        for topup in topups:
+            topup_transactions.append({
+                'date': topup.date_processed,
+                'type': 'Top Up',
+                'description': f'Top up via {topup.payment_method}',
+                'amount': topup.amount,
+                'status': 'Completed'
+            })
+    except Exception as e:
+        pass
+
+    # Combine and sort transactions
+    all_transactions = purchase_transactions + topup_transactions
+    all_transactions.sort(key=lambda x: x['date'], reverse=True)
+
+    return render_template("transactions.html", transactions=all_transactions, user_balance=user_balance)
 
 @app.route("/topup", methods=["GET", "POST"])
 def topup():
@@ -1517,8 +1589,7 @@ def library():
 
         purchased_games = purchased_query.order_by(UserGame.purchase_date.desc()).offset(offset).limit(per_page).all()
 
-        purchased_titles_platforms = db.session.query(Game.title, Game.platform).join(UserGame, UserGame.game_id == Game.id).filter(UserGame.username == session["username"]).subquery()
-        created_games = UserGame.query.filter_by(username=session["username"]).filter(UserGame.game_id.is_(None)).outerjoin(purchased_titles_platforms, (UserGame.title == purchased_titles_platforms.c.title) & (UserGame.platform == purchased_titles_platforms.c.platform)).filter(purchased_titles_platforms.c.title.is_(None)).order_by(UserGame.purchase_date.desc()).all()
+        created_games = UserGame.query.filter_by(username=session["username"]).filter(UserGame.game_id.is_(None)).order_by(UserGame.purchase_date.desc()).all()
 
         for user_game in created_games:
             user_game.suggestion = GameSuggestion.query.filter_by(
@@ -1526,6 +1597,9 @@ def library():
                 platform=user_game.platform,
                 suggested_by=session["username"]
             ).first()
+
+        # Filter out user_games without suggestions to prevent errors
+        created_games = [ug for ug in created_games if ug.suggestion is not None]
     except Exception as e:
         purchased_games = []
         created_games = []
@@ -1625,15 +1699,35 @@ def edit_user_suggestion(suggestion_id):
 
         try:
 
-            changes_made = False
+            # Store old values to find user_game
+            old_title = suggestion.title
+            old_platform = suggestion.platform
 
-            if (suggestion.title != title or
-                suggestion.platform != platform or
-                suggestion.genre != genre or
-                suggestion.description != description or
-                suggestion.installation_instructions != installation_instructions):
+            # Find user_game using old values
+            user_game = UserGame.query.filter_by(
+                username=session["username"],
+                game_id=None,
+                title=old_title,
+                platform=old_platform
+            ).first()
 
-                changes_made = True
+            if not user_game:
+                flash("Associated user game not found. Please contact support.", "error")
+                return redirect(url_for("library"))
+
+            # Update user_game to new values
+            user_game.title = title
+            user_game.platform = platform
+            user_game.genre = genre
+
+            # Update suggestion to new values
+            suggestion.title = title
+            suggestion.platform = platform
+            suggestion.genre = genre
+            suggestion.description = description
+            suggestion.installation_instructions = installation_instructions
+
+            changes_made = (old_title != title or old_platform != platform or suggestion.genre != genre or suggestion.description != description or suggestion.installation_instructions != installation_instructions)
 
             if suggestion.status == 'approved':
                 sale_price = request.form.get("sale_price", "").strip()
@@ -1657,29 +1751,11 @@ def edit_user_suggestion(suggestion_id):
                         changes_made = True
                     suggestion.price = 0.0
 
-            suggestion.title = title
-            suggestion.platform = platform
-            suggestion.genre = genre
-            suggestion.description = description
-            suggestion.installation_instructions = installation_instructions
-
             if changes_made:
-                suggestion.last_updated = datetime.datetime.now(datetime.timezone.utc)
+                suggestion.last_updated = datetime.utcnow()
                 suggestion.updated_by = session["username"]
 
             db.session.commit()
-
-            user_game = UserGame.query.filter_by(
-                username=session["username"],
-                game_id=None,
-                title=suggestion.title,
-                platform=suggestion.platform
-            ).first()
-            if user_game:
-                user_game.title = title
-                user_game.platform = platform
-                user_game.genre = genre
-                db.session.commit()
 
             flash("Suggestion updated successfully!", "success")
             return redirect(url_for("library"))
@@ -1957,7 +2033,7 @@ def rate_game(game_id):
 
                 existing.rating = int(rating)
                 existing.review = review
-                existing.date = datetime.datetime.now(datetime.timezone.utc)
+                existing.date = datetime.utcnow()
             else:
 
                 new_rating = Rating(username=session["username"], game_id=game_id, rating=int(rating), review=review)
@@ -2103,14 +2179,14 @@ def health_check():
         db.session.execute(text('SELECT 1'))
         return jsonify({
             'status': 'healthy',
-            'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'timestamp': datetime.utcnow().isoformat(),
             'database': 'connected'
         })
     except Exception as e:
         return jsonify({
             'status': 'unhealthy',
             'error': str(e),
-            'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat()
+            'timestamp': datetime.utcnow().isoformat()
         }), 500
 
 @app.route("/logout")
@@ -2137,4 +2213,3 @@ def add_header(response):
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
-

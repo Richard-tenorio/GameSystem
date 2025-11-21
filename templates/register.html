@@ -2,33 +2,160 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Register - GameHub</title>
+    <title>Register - GameSystem</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        /* Match the dark theme input styling from other forms */
+        input[type="text"], input[type="password"], input[type="number"], input[type="email"] {
+            width: 100%;
+            max-width: 400px;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #3a3a3a;
+            border-radius: 6px;
+            background-color: rgba(25, 25, 25, 0.9);
+            color: #f0f0f0;
+            font-size: 15px;
+            transition: 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #ffffff;
+            box-shadow: 0 0 15px rgba(255,255,255,0.2);
+            background-color: #1f1f1f;
+            transform: scale(1.02);
+        }
+
+        label {
+            color: #bdbdbd;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        label i.icon {
+            margin-right: 8px;
+            font-size: 18px;
+        }
+
+        button[type="submit"] {
+            background: linear-gradient(135deg, #4a90e2, #357abd);
+            color: #f0f0f0;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            margin: 20px 0;
+        }
+
+        button[type="submit"]:hover {
+            background: linear-gradient(135deg, #5a9ff2, #4589cd);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(74, 144, 226, 0.4);
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+    </style>
 </head>
 <body>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <ul class="flashes">
-                {% for category, message in messages %}
-                    <li class="{{ category }}">{{ message }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
-    {% endwith %}
-
     <div class="box">
         <h1>Create Account</h1>
-        <form method="post" action="{{ url_for('register') }}">
-            <label>Username</label>
-            <input type="text" name="username" required autofocus>
-            <label>Password</label>
-            <input type="password" name="password" required>
-            <label>Confirm Password</label>
-            <input type="password" name="confirm_password" required>
-            <!-- role left optional; defaults to customer in backend -->
-            <button type="submit">Register</button>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" onsubmit="return validateForm()">
+            <label for="full_name">Full Name:</label><br>
+            <input type="text" id="full_name" name="full_name" placeholder="Enter your full name" required><br>
+
+            <label for="email"><i class="fas fa-envelope icon" aria-hidden="true"></i>Email:</label><br>
+            <input type="email" id="email" name="email" placeholder="Enter your email address" required autocomplete="email" aria-describedby="email-help"><br>
+            <div id="email-help" class="sr-only">Enter your email address for account registration</div>
+
+            <label for="age">Age:</label><br>
+            <input type="number" id="age" name="age" placeholder="Enter your age" min="13" max="120" required><br>
+
+            <label for="username">Username:</label><br>
+            <input type="text" id="username" name="username" placeholder="Choose a unique username" required><br>
+
+            <label for="password">Password:</label><br>
+            <input type="password" id="password" name="password" placeholder="Create a strong password" required><br>
+
+            <label for="confirm_password">Confirm Password:</label><br>
+            <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required><br>
+
+            <div id="password-error" style="color: red; display: none;"></div>
+            <button type="submit">Create Account</button>
         </form>
-        <p><a href="{{ url_for('login') }}">Back to Login</a></p>
+
+        <p><a href="{{ url_for('login') }}">← Back to Login</a></p>
     </div>
+    <script>
+        function validateForm() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+            const errorDiv = document.getElementById('password-error');
+            const errors = [];
+
+            // Check password match
+            if (password !== confirmPassword) {
+                errors.push('Passwords do not match.');
+            }
+
+            // Validate password strength
+            if (password.length < 8) {
+                errors.push('Password must be at least 8 characters long.');
+            }
+            if (!/[A-Z]/.test(password)) {
+                errors.push('Password must contain at least one uppercase letter.');
+            }
+            if (!/[a-z]/.test(password)) {
+                errors.push('Password must contain at least one lowercase letter.');
+            }
+            if (!/\d/.test(password)) {
+                errors.push('Password must contain at least one digit.');
+            }
+            if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+                errors.push('Password must contain at least one special character (e.g., @, #, !).');
+            }
+
+            if (errors.length > 0) {
+                errorDiv.innerHTML = errors.join('<br>');
+                errorDiv.style.display = 'block';
+                return false;
+            } else {
+                errorDiv.style.display = 'none';
+                return true;
+            }
+        }
+    </script>
 </body>
 </html>

@@ -1,72 +1,228 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <title>Marketplace - GameHub</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketplace - GameSystem</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .header-nav {
+            background: rgba(20, 20, 20, 0.95);
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+        .search-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .search-form input, .search-form select {
+            padding: 8px;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            background-color: rgba(25, 25, 25, 0.9);
+            color: #f0f0f0;
+        }
+        .search-form button {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
+            color: #f0f0f0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+        .nav-links a {
+            color: #bdbdbd;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        .nav-links a:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+        }
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .section {
+            margin-bottom: 40px;
+        }
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .game-card {
+            background: rgba(35, 35, 35, 0.9);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-align: center;
+        }
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        }
+        .game-card h3 {
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+        .game-card p {
+            margin: 5px 0;
+            color: #e0e0e0;
+        }
+        .status-approved {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .game-card .btn {
+            margin-top: 15px;
+        }
+        @media (max-width: 768px) {
+            .header-nav {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .search-form {
+                flex-wrap: wrap;
+            }
+            .nav-links {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .games-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <ul class="flashes">
-                {% for category, message in messages %}
-                    <li class="{{ category }}">{{ message }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
-    {% endwith %}
-
-    <header>
-        <h1>Marketplace</h1>
-        <nav><a href="{{ url_for('customer') }}">Home</a> | <a href="{{ url_for('profile') }}">Profile</a> | <a href="{{ url_for('logout') }}">Logout</a></nav>
-    </header>
-
-    <section>
-        <form method="get" action="{{ url_for('marketplace') }}">
-            <input type="text" name="search" placeholder="Search title" value="{{ search or '' }}">
+    <header class="header-nav">
+        <div class="logo">GameSystem</div>
+        <form method="GET" class="search-form" action="{{ url_for('marketplace') }}">
+            <input type="text" name="search" placeholder="Search games..." value="{{ search }}">
             <select name="platform">
                 <option value="">All Platforms</option>
-                {% for p in platforms %}
-                    <option value="{{ p }}" {% if platform_filter == p %}selected{% endif %}>{{ p }}</option>
+                {% for platform in platforms %}
+                    <option value="{{ platform }}" {% if platform_filter == platform %}selected{% endif %}>{{ platform }}</option>
                 {% endfor %}
             </select>
-            <input type="text" name="genre" placeholder="Genre" value="{{ genre_filter or '' }}">
+            <select name="genre">
+                <option value="">All Genres</option>
+                <option value="Action" {% if genre_filter == 'Action' %}selected{% endif %}>Action</option>
+                <option value="Adventure" {% if genre_filter == 'Adventure' %}selected{% endif %}>Adventure</option>
+                <option value="RPG" {% if genre_filter == 'RPG' %}selected{% endif %}>RPG</option>
+                <option value="Strategy" {% if genre_filter == 'Strategy' %}selected{% endif %}>Strategy</option>
+                <option value="Sports" {% if genre_filter == 'Sports' %}selected{% endif %}>Sports</option>
+                <option value="Racing" {% if genre_filter == 'Racing' %}selected{% endif %}>Racing</option>
+                <option value="Puzzle" {% if genre_filter == 'Puzzle' %}selected{% endif %}>Puzzle</option>
+                <option value="Simulation" {% if genre_filter == 'Simulation' %}selected{% endif %}>Simulation</option>
+            </select>
             <button type="submit">Filter</button>
         </form>
-    </section>
+        <div class="nav-links">
+            <a href="{{ url_for('customer') }}"><i class="fas fa-gamepad icon"></i>Browse New</a>
+            <a href="{{ url_for('profile') }}"><i class="fas fa-user icon"></i>Profile</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
+        </div>
+    </header>
+    <main class="main-content">
+        <h1><i class="fas fa-store icon"></i>Marketplace - Used Games</h1>
 
-    <section>
-        <h2>Used Listings</h2>
-        {% if user_games %}
-            <ul class="listings">
-                {% for ug in user_games %}
-                    <li>
-                        <strong>{{ ug.game.title }}</strong> ({{ ug.game.platform }}) — Condition: {{ ug.condition }} — Seller: {{ ug.username }} — Price: {{ "%.2f"|format(ug.sale_price) if ug.sale_price is not none else "-" }}
-                        <a href="{{ url_for('buy_used', user_game_id=ug.id) }}" onclick="return confirm('Buy this used game?')">Buy</a>
-                    </li>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}" role="alert" aria-live="assertive">{{ message }}</div>
                 {% endfor %}
-            </ul>
-        {% else %}
-            <p>No items listed for sale.</p>
-        {% endif %}
+            {% endif %}
+        {% endwith %}
 
-        {% if total_pages and total_pages > 1 %}
-            <div class="pagination">
-                {% if page > 1 %}
-                    <a href="{{ url_for('marketplace', page=page-1, search=search, platform=platform_filter, genre=genre_filter) }}">&laquo; Prev</a>
-                {% endif %}
-                {% for p in range(1, total_pages + 1) %}
-                    {% if p == page %}
-                        <span class="current-page">{{ p }}</span>
-                    {% else %}
-                        <a href="{{ url_for('marketplace', page=p, search=search, platform=platform_filter, genre=genre_filter) }}">{{ p }}</a>
-                    {% endif %}
+        <section class="section">
+            <h3>Used Games for Sale</h3>
+            <div class="games-grid">
+                {% for user_game in user_games %}
+                    <div class="game-card">
+                        <h3>{{ user_game.game.title }}</h3>
+                        <p><strong>Platform:</strong> {{ user_game.game.platform }}</p>
+                        <p><strong>Genre:</strong> {{ user_game.game.genre }}</p>
+                        <p><strong>Condition:</strong> {{ user_game.condition }}</p>
+                    <p><strong>Price:</strong> ₱{{ "%.2f"|format(user_game.sale_price) }}</p>
+                        <p><strong>Seller:</strong> {{ user_game.username }}</p>
+                        <a href="{{ url_for('buy_used', user_game_id=user_game.id) }}" class="btn" onclick="return confirm('Are you sure you want to buy this used game?')">Buy Used</a>
+                    </div>
                 {% endfor %}
-                {% if page < total_pages %}
-                    <a href="{{ url_for('marketplace', page=page+1, search=search, platform=platform_filter, genre=genre_filter) }}">Next &raquo;</a>
-                {% endif %}
             </div>
-        {% endif %}
-    </section>
+
+            {% if not user_games %}
+                <p>No used games available for sale.</p>
+            {% endif %}
+
+            <h3>Community Games</h3>
+            <div class="games-grid">
+                {% for suggestion in approved_suggestions %}
+                    <div class="game-card">
+                        <h3>{{ suggestion.title }}</h3>
+                        <p><strong>Platform:</strong> {{ suggestion.platform }}</p>
+                        <p><strong>Genre:</strong> {{ suggestion.genre }}</p>
+                        <p><strong>Status:</strong> <span class="status-approved">Community Game</span></p>
+                        <p><strong>Price:</strong> Free</p>
+                        <p><strong>Suggested by:</strong> {{ suggestion.suggested_by }}</p>
+                        {% if suggestion.description %}
+                            <p><strong>Description:</strong> {{ suggestion.description }}</p>
+                        {% endif %}
+                        <a href="{{ url_for('buy', game_id=suggestion.id) }}" class="btn" onclick="return confirm('Are you sure you want to add this community game to your library?')">Add to Library</a>
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% if not approved_suggestions %}
+                <p>No community games available.</p>
+            {% endif %}
+
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+                <div class="pagination">
+                    {% if page > 1 %}
+                        <a href="{{ url_for('marketplace', page=page-1, search=search, platform=platform_filter, genre=genre_filter) }}">&laquo; Previous</a>
+                    {% endif %}
+
+                    {% for page_num in range(1, total_pages + 1) %}
+                        {% if page_num == page %}
+                            <span class="current-page">{{ page_num }}</span>
+                        {% else %}
+                            <a href="{{ url_for('marketplace', page=page_num, search=search, platform=platform_filter, genre=genre_filter) }}">{{ page_num }}</a>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page < total_pages %}
+                        <a href="{{ url_for('marketplace', page=page+1, search=search, platform=platform_filter, genre=genre_filter) }}">Next &raquo;</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </section>
+    </main>
 </body>
 </html>

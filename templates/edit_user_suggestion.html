@@ -230,12 +230,12 @@
             </div>
 
             <div>
-                <label for="description"><i class="fas fa-comment icon" aria-hidden="true"></i>Description (optional):</label>
-                <textarea id="description" name="description" placeholder="Describe the game or any additional details..." rows="3">{{ suggestion.description }}</textarea>
+                <label for="description"><i class="fas fa-comment icon" aria-hidden="true"></i>Description:</label>
+                <textarea id="description" name="description" placeholder="Describe the game or any additional details..." rows="3" required>{{ suggestion.description }}</textarea>
             </div>
 
             <div>
-                <label for="image"><i class="fas fa-image icon" aria-hidden="true"></i>Game Cover Image (Optional):</label>
+                <label for="image"><i class="fas fa-image icon" aria-hidden="true"></i>Game Cover Image:</label>
                 {% if suggestion.image %}
                 <div class="current-image">
                     <p><strong>Current Image:</strong></p>
@@ -258,7 +258,7 @@
             </div>
 
             <div>
-                <label for="installation_file"><i class="fas fa-file-upload icon" aria-hidden="true"></i>Installation File (Optional):</label>
+                <label for="installation_file"><i class="fas fa-file-upload icon" aria-hidden="true"></i>Installation File:</label>
                 {% if suggestion.installation_file %}
                 <div class="current-file">
                     <p><strong>Current File:</strong> {{ suggestion.installation_file }}</p>
