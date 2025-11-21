@@ -4,37 +4,26 @@
     <meta charset="utf-8">
     <title>Add Game</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
-        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-    </style>
 </head>
 <body>
     <div class="box">
         <h1>Add Game</h1>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="flash {{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
         <form method="POST" action="{{ url_for('add_game') }}">
-            {{ form.hidden_tag() }}  <!-- CSRF token -->
-            <label for="title">Title:</label><br>
-            {{ form.title(size=32) }}<br><br>
-            <label for="platform">Platform:</label><br>
-            {{ form.platform(size=32) }}<br><br>
-            <label for="genre">Genre:</label><br>
-            {{ form.genre }}<br><br>
-            <label for="quantity">Quantity:</label><br>
-            {{ form.quantity(min=1) }}<br><br>
-            <label for="price">Price (₱):</label><br>
-            {{ form.price(step="0.01") }}<br><br>
-            {{ form.submit() }}
+            <label for="title">Title</label><br>
+            <input type="text" id="title" name="title" size="32" required><br><br>
+            <label for="platform">Platform</label><br>
+            <input type="text" id="platform" name="platform" size="32" required><br><br>
+            <label for="genre">Genre</label><br>
+            <select id="genre" name="genre" required>
+                <option>Action</option><option>Adventure</option><option>RPG</option>
+                <option>Strategy</option><option>Sports</option><option>Racing</option>
+                <option>Simulation</option><option>Puzzle</option><option>Horror</option><option>Fighting</option>
+            </select><br><br>
+            <label for="quantity">Quantity</label><br>
+            <input type="number" id="quantity" name="quantity" min="1" required><br><br>
+            <label for="price">Price</label><br>
+            <input type="number" id="price" name="price" step="0.01" min="0" required><br><br>
+            <input type="submit" value="Add Game">
         </form>
         <p><a href="{{ url_for('admin') }}">← Back to Dashboard</a></p>
     </div>

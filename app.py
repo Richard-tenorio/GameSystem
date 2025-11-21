@@ -443,7 +443,7 @@ def add_game():
             return redirect(url_for("admin"))
 
         allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'jfif'}
-        if '.' not in image_file.filename or image_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+        if not ('.' in image_file.filename and image_file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
             flash("Invalid image file type. Please upload PNG, JPG, JPEG, GIF, WebP, or JFIF.", "error")
             return redirect(url_for("admin"))
 
@@ -624,7 +624,7 @@ def change_logo():
         return redirect(url_for("admin"))
 
     allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-    if '.' not in logo_file.filename or logo_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+    if not ('.' in logo_file.filename and logo_file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
         flash("Invalid logo file type. Please upload PNG, JPG, JPEG, GIF, or WebP.", "error")
         return redirect(url_for("admin"))
 
@@ -727,7 +727,7 @@ def approve_topup(request_id):
                 if user:
                     user.balance += topup_request.amount
                     topup_request.status = 'approved'
-                    topup_request.date_processed = datetime.utcnow()
+                    topup_request.date_processed = datetime.datetime.now(datetime.timezone.utc)
                     topup_request.processed_by = session["username"]
 
 
@@ -750,7 +750,7 @@ def reject_topup(request_id):
             topup_request = TopupRequest.query.get(request_id)
             if topup_request and topup_request.status == 'pending':
                 topup_request.status = 'rejected'
-                topup_request.date_processed = datetime.utcnow()
+                topup_request.date_processed = datetime.datetime.now(datetime.timezone.utc)
                 topup_request.processed_by = session["username"]
                 db.session.commit()
                 flash("Top-up request rejected.", "success")
@@ -975,7 +975,7 @@ def edit_suggestion(suggestion_id):
 
                 allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'jfif'}
 
-                if '.' not in image_file.filename or image_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+                if not ('.' in image_file.filename and image_file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
 
                     flash("Invalid image file type. Please upload PNG, JPG, JPEG, GIF, WebP, or JFIF.", "error")
                     return render_template("edit_suggestion.html", suggestion=suggestion)
@@ -1271,7 +1271,7 @@ def process_purchase(game_id):
                 sale_user_game.condition = 'used'
                 sale_user_game.listed_for_sale = False
                 sale_user_game.sale_price = None
-                sale_user_game.purchase_date = datetime.utcnow()
+                sale_user_game.purchase_date = datetime.datetime.now(datetime.timezone.utc)
 
             db.session.commit()
             flash("Game purchased successfully.", "success")
@@ -1664,7 +1664,7 @@ def edit_user_suggestion(suggestion_id):
             suggestion.installation_instructions = installation_instructions
 
             if changes_made:
-                suggestion.last_updated = datetime.utcnow()
+                suggestion.last_updated = datetime.datetime.now(datetime.timezone.utc)
                 suggestion.updated_by = session["username"]
 
             db.session.commit()
@@ -1957,7 +1957,7 @@ def rate_game(game_id):
 
                 existing.rating = int(rating)
                 existing.review = review
-                existing.date = datetime.utcnow()
+                existing.date = datetime.datetime.now(datetime.timezone.utc)
             else:
 
                 new_rating = Rating(username=session["username"], game_id=game_id, rating=int(rating), review=review)
@@ -2103,14 +2103,14 @@ def health_check():
         db.session.execute(text('SELECT 1'))
         return jsonify({
             'status': 'healthy',
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(),
             'database': 'connected'
         })
     except Exception as e:
         return jsonify({
             'status': 'unhealthy',
             'error': str(e),
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat()
         }), 500
 
 @app.route("/logout")

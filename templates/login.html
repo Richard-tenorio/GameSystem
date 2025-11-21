@@ -1,109 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - GameSystem</title>
+    <title>Login - GameHub</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="{{ url_for('static', filename='toast.js') }}" defer></script>
-    <style>
-        .skip-link {
-            position: absolute;
-            top: -40px;
-            left: 6px;
-            background: #000;
-            color: #fff;
-            padding: 8px;
-            text-decoration: none;
-            z-index: 100;
-        }
-        .skip-link:focus {
-            top: 6px;
-        }
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-        .box form {
-            text-align: center;
-        }
-        .box form div {
-            margin-bottom: 8px;
-        }
-        .box form div label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            text-align: left;
-        }
-        .box form button {
-            margin: 20px auto 0;
-            display: block;
-            font-weight: bold;
-        }
-        .box form input {
-            width: 100%;
-            max-width: 400px;
-            padding: 10px 15px;
-            border: 1px solid #555;
-            border-radius: 4px;
-            background: #2a2a2a;
-            color: #f0f0f0;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        .box form input:focus {
-            outline: none;
-            border-color: #007bff;
-            box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
-        }
-    </style>
 </head>
 <body>
-    <a href="#main-content" class="skip-link">Skip to main content</a>
-
-    <main id="main-content" class="box" role="main">
-        <h1 id="login-heading"><span class="gamesystem-text">GameSystem</span> - Login</h1>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
                 {% for category, message in messages %}
-                    <div class="flash {{ category }}" role="alert">{{ message }}</div>
+                    <li class="{{ category }}">{{ message }}</li>
                 {% endfor %}
-            {% endif %}
-        {% endwith %}
+            </ul>
+        {% endif %}
+    {% endwith %}
 
-        <form method="POST" aria-labelledby="login-heading" role="form">
-            <div>
-                <label for="username"><i class="fas fa-user icon" aria-hidden="true"></i>Username:</label>
-                <input type="text" id="username" name="username" placeholder="Enter your username" required autocomplete="username">
-            </div>
-
-            <div>
-                <label for="password"><i class="fas fa-lock icon" aria-hidden="true"></i>Password:</label>
-                <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
-            </div>
-
-            <button type="submit"><i class="fas fa-sign-in-alt icon" aria-hidden="true"></i>Login</button>
+    <div class="box login-box">
+        <h1>Login</h1>
+        <form method="post" action="{{ url_for('login') }}">
+            <label>Username</label>
+            <input type="text" name="username" required autofocus>
+            <label>Password</label>
+            <input type="password" name="password" required>
+            <button type="submit">Sign In</button>
         </form>
-
         <p>
-            Don't have an account?
-            <a href="{{ url_for('register') }}">Register Here</a>
+            Don't have an account? <a href="{{ url_for('register') }}">Register</a>
         </p>
-        <p>
-            <a href="{{ url_for('forgot_password') }}">Forgot Password?</a>
-        </p>
-    </main>
-
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    </div>
 </body>
 </html>

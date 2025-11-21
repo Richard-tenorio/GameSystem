@@ -142,7 +142,7 @@
                 <label for="image"><i class="fas fa-image icon" aria-hidden="true"></i>Game Cover Image (Optional)</label>
                 <div class="current-image">
                     <p><strong>Current Image:</strong></p>
-                    <img src="{{ url_for('static', filename='uploads/' + game.image) }}" alt="Current Game Image" style="height: 100px; vertical-align: middle;">
+                    <img src="{% if game.image %}{{ url_for('static', filename='uploads/' + game.image) }}{% else %}{{ url_for('static', filename='logo.png') }}{% endif %}" alt="Current Game Image" style="height: 100px; vertical-align: middle;">
                 </div>
                 <div class="file-input-wrapper">
                     <input type="file" id="image" name="image" accept="image/*">
