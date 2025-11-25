@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Notifications - GameSystem</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Font Awesome removed for offline compatibility -->
+</head>
+<body>
+    <header class="header-nav">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo" class="header-logo">
+            <h1 style="margin: 0; color: #ffffff; font-size: 1.5rem;">GameSystem</h1>
+        </div>
+    <div class="nav-links">
+            {% if session['role'] == 'customer' %}
+            <a href="{{ url_for('customer') }}">Dashboard</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')">Logout</a>
+            {% else %}
+            <a href="{{ url_for('admin') }}">Dashboard</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')">Logout</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <h1>Notifications</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if notifications %}
+    <div class="notifications-list">
+        {% for notification in notifications %}
+        <div class="notification-item {% if not notification.is_read %}unread{% endif %} {% if 'approved' in notification.message %}approved{% elif 'rejected' in notification.message %}rejected{% endif %}">
+            <div class="notification-content">
+                <p>{{ notification.message }}</p>
+                <small>{{ notification.date_created.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+            </div>
+            {% if not notification.is_read %}
+            <button onclick="markAsRead({{ notification.id }})" class="btn btn-primary btn-small">Mark as Read</button>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="{{ url_for('notifications', page=page-1) }}">&laquo; Previous</a>
+        {% endif %}
+
+        {% for page_num in range(1, total_pages + 1) %}
+        {% if page_num == page %}
+        <span class="current-page">{{ page_num }}</span>
+        {% else %}
+        <a href="{{ url_for('notifications', page=page_num) }}">{{ page_num }}</a>
+        {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+        <a href="{{ url_for('notifications', page=page+1) }}">Next &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <p>You have no notifications.</p>
+    {% endif %}
+
+
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        function markAsRead(notificationId) {
+            fetch(`/api/notifications/mark_read/${notificationId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error marking notification as read');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error marking notification as read');
+            });
+        }
+    </script>
+</body>
+</html>

@@ -67,7 +67,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         <p class="platform">${game.platform}</p>
                         <p class="genre">${game.genre || 'N/A'}</p>
                         <p class="price">$${game.price.toFixed(2)}</p>
-                        <p class="quantity">Available: ${game.quantity}</p>
                         <div class="game-actions">
                             <button class="btn btn-primary add-to-cart" data-game-id="${game.id}">Add to Cart</button>
                             <a href="/game/${game.id}" class="btn btn-secondary">View Details</a>

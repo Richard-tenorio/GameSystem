@@ -62,8 +62,7 @@
                     </select>
                     {% if errors.genre %}<div class="error-text">{{ errors.genre }}</div>{% endif %}
 
-                    <input type="number" name="quantity" placeholder="Quantity" value="{{ request.form.quantity or '' }}" min="1" required>
-                    {% if errors.quantity %}<div class="error-text">{{ errors.quantity }}</div>{% endif %}
+
 
                     <input type="number" step="0.01" name="price" placeholder="Price (₱)" value="{{ request.form.price or '' }}" min="0.01" required>
                     {% if errors.price %}<div class="error-text">{{ errors.price }}</div>{% endif %}
@@ -87,8 +86,6 @@
                         <th>Title</th>
                         <th>Platform</th>
                         <th>Genre</th>
-                        <th>Available</th>
-                        <th>Sold</th>
                         <th>Price</th>
                         <th>Actions</th>
                     </tr>
@@ -105,8 +102,6 @@
                         <td>{{ game.title }}</td>
                         <td>{{ game.platform }}</td>
                         <td>{{ game.genre }}</td>
-                        <td>{{ game.quantity }}</td>
-                        <td>{{ game.sold_count }}</td>
                         <td>₱{{ "%.2f"|format(game.price) }}</td>
 
                         <td>

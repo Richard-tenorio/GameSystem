@@ -90,6 +90,9 @@
             <input type="text" name="otp" placeholder="000000" maxlength="6" required>
             <button type="submit"><i class="fas fa-check"></i> Verify</button>
         </form>
+        <p style="text-align: center; margin-top: 20px;">
+            <a href="{{ url_for('resend_otp') }}" style="color: #4caf50; text-decoration: none;"><i class="fas fa-redo"></i> Resend Code</a>
+        </p>
     </main>
 </body>
 </html>

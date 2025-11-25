@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, make_response, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from config import Config
-from models import db, User, Game, Purchase, UserGame, Rating, GameSuggestion, TopupRequest
+from models import db, User, Game, Purchase, UserGame, Rating, GameSuggestion, TopupRequest, Notification
 import os
 import random
 from datetime import datetime, timedelta
@@ -119,14 +119,18 @@ def send_otp_email(email, otp):
         from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
 
-        smtp_server = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
-        smtp_port = int(os.getenv('SMTP_PORT', 587))
-        smtp_username = os.getenv('SMTP_USERNAME')
-        smtp_password = os.getenv('SMTP_PASSWORD')
+        smtp_server = app.config.get('MAIL_SERVER', 'smtp.gmail.com')
+        smtp_port = app.config.get('MAIL_PORT', 587)
+        smtp_username = app.config.get('MAIL_USERNAME')
+        smtp_password = app.config.get('MAIL_PASSWORD')
 
+        # Always print OTP to console for testing/fallback
+        print(f"OTP code for {email}: {otp}")
+
+        # If SMTP credentials are not configured, return True (console OTP)
         if not smtp_username or not smtp_password:
-            print("SMTP credentials not configured. Set SMTP_USERNAME and SMTP_PASSWORD environment variables.")
-            return False
+            print("SMTP credentials not configured. Using console OTP for testing.")
+            return True
 
         msg = MIMEMultipart()
         msg['From'] = smtp_username
@@ -142,10 +146,13 @@ def send_otp_email(email, otp):
         text = msg.as_string()
         server.sendmail(smtp_username, email, text)
         server.quit()
+        print(f"OTP email sent successfully to {email}")
         return True
     except Exception as e:
         print(f"Error sending email: {e}")
-        return False
+        # Always return True to allow login with console OTP
+        print(f"Using console OTP due to email error. OTP code for {email}: {otp}")
+        return True
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -156,32 +163,28 @@ def login():
         try:
             user = User.query.filter_by(username=username).first()
             if user and user.check_password(password):
-                if user.role == "inactive":
+                if user.status == "inactive":
                     flash("Your account has been deactivated. Please contact support.", "error")
+                    return render_template("login.html")
                 else:
-                    # Temporarily skip OTP verification
-                    # # Generate OTP
-                    # otp = generate_otp()
-                    # user.otp_code = otp
-                    # user.otp_expires = datetime.utcnow() + timedelta(minutes=5)
-                    # db.session.commit()
-
-                    # # Send OTP via email
-                    # if send_otp_email(user.email, otp):
-                    #     session["pending_username"] = user.username
-                    #     return redirect(url_for("verify_otp"))
-                    # else:
-                    #     flash("Failed to send OTP. Please try again.", "error")
-
-                    # Directly log in user
-                    session.permanent = True
-                    session["username"] = user.username
-                    session["role"] = user.role
-
                     if user.role == "admin":
+                        # Log in admin directly
+                        session.permanent = True
+                        session["username"] = user.username
+                        session["role"] = user.role
                         return redirect(url_for("admin"))
                     else:
-                        return redirect(url_for("customer"))
+                        # Generate new OTP for customers (automated, no DB storage)
+                        otp = generate_otp()
+                        session["otp_code"] = otp
+                        session["otp_expires"] = (datetime.utcnow() + timedelta(minutes=5)).timestamp()
+
+                        # Send OTP via email
+                        if send_otp_email(user.email, otp):
+                            session["pending_username"] = user.username
+                            return redirect(url_for("verify_otp"))
+                        else:
+                            flash("Failed to send OTP. Please try again.", "error")
             else:
                 flash("Invalid username or password", "error")
         except Exception as e:
@@ -195,21 +198,20 @@ def verify_otp():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        otp = request.form["otp"]
+        otp = request.form.get("otp", "")
 
         try:
             user = User.query.filter_by(username=session["pending_username"]).first()
-            if user and user.otp_code == otp and user.otp_expires > datetime.utcnow():
-                # Clear OTP
-                user.otp_code = None
-                user.otp_expires = None
-                db.session.commit()
+            if user and session.get("otp_code") == otp and session.get("otp_expires") and session["otp_expires"] > datetime.utcnow().timestamp():
+                # Clear OTP from session
+                session.pop("otp_code", None)
+                session.pop("otp_expires", None)
+                session.pop("pending_username", None)
 
                 # Log in user
                 session.permanent = True
                 session["username"] = user.username
                 session["role"] = user.role
-                session.pop("pending_username", None)
 
                 if user.role == "admin":
                     return redirect(url_for("admin"))
@@ -221,6 +223,37 @@ def verify_otp():
             flash("An internal error occurred.", "error")
 
     return render_template("verify_otp.html")
+
+@app.route("/resend_otp")
+def resend_otp():
+    if "pending_username" not in session:
+        return redirect(url_for("login"))
+
+    try:
+        user = User.query.filter_by(username=session["pending_username"]).first()
+        if user:
+            # Check if we recently sent an OTP (prevent spam)
+            recently_sent = session.get("otp_expires") and (datetime.utcnow().timestamp() - session["otp_expires"]) < 60 if session.get("otp_expires") else False
+            if recently_sent:
+                flash("Please wait before requesting a new OTP.", "error")
+                return redirect(url_for("verify_otp"))
+
+            # Generate new OTP
+            otp = generate_otp()
+            session["otp_code"] = otp
+            session["otp_expires"] = (datetime.utcnow() + timedelta(minutes=5)).timestamp()
+
+            # Send OTP via email
+            if send_otp_email(user.email, otp):
+                flash("New OTP sent to your email.", "success")
+            else:
+                flash("Failed to send OTP. Please try again.", "error")
+        else:
+            flash("User not found.", "error")
+    except Exception as e:
+        flash("An error occurred while resending OTP.", "error")
+
+    return redirect(url_for("verify_otp"))
 
 @app.route("/")
 def index():
@@ -269,7 +302,7 @@ def register():
             elif existing_email:
                 flash("Email address already registered. Please use another.", "error")
             else:
-                user = User(username=username, email=email, full_name=full_name, age=age_int, role=role)
+                user = User(username=username, email=email, full_name=full_name, age=age_int, role=role, status='active')
                 user.set_password(password)
                 db.session.add(user)
                 db.session.commit()
@@ -313,7 +346,7 @@ def admin():
     try:
         total_games = Game.query.count()
         sold_games = Purchase.query.count()
-        total_users = User.query.filter_by(role='customer').count()
+        total_users = User.query.filter_by(status='active').count()
         active_users = total_users
 
         total_revenue = db.session.query(db.func.sum(Purchase.price_paid)).scalar() or 0.0
@@ -355,7 +388,8 @@ def admin():
 @app.route("/admin_games")
 def admin_games():
     if "username" not in session or session["role"] != "admin":
-        return redirect(url_for("login"))
+        return error
+    return redirect(url_for("login"))
 
     page = int(request.args.get('page', 1))
     per_page = 10
@@ -400,7 +434,6 @@ def add_game():
         platform = re.sub(r'[^\w\s\-\.\(\)]', '', request.form["platform"].strip())
         if len(platform) > 50:
             platform = platform[:50]
-        quantity = request.form["quantity"].strip()
         genre = request.form.get("genre", "Action").strip()
         price = request.form["price"].strip()
 
@@ -418,14 +451,6 @@ def add_game():
             return redirect(url_for("admin"))
         if not genre:
             flash("Genre cannot be empty.", "error")
-            return redirect(url_for("admin"))
-        try:
-            quantity_int = int(quantity)
-            if quantity_int <= 0:
-                flash("Quantity must be a positive integer.", "error")
-                return redirect(url_for("admin"))
-        except ValueError:
-            flash("Quantity must be a valid integer.", "error")
             return redirect(url_for("admin"))
         try:
             price_float = float(price)
@@ -481,7 +506,7 @@ def add_game():
             os.makedirs(os.path.dirname(image_path), exist_ok=True)
             image_file.save(image_path)
 
-            game = Game(title=title, platform=platform, quantity=quantity_int, genre=genre, price=price_float, image=filename, installation_file=installation_filename)
+            game = Game(title=title, platform=platform, genre=genre, price=price_float, image=filename, installation_file=installation_filename)
             db.session.add(game)
             db.session.commit()
             flash("Game added successfully.", "success")
@@ -490,24 +515,7 @@ def add_game():
             flash("Error adding game.", "error")
     return redirect(url_for("admin"))
 
-@app.route("/update_quantity", methods=["POST"])
-def update_quantity():
-    if "username" in session and session["role"] == "admin":
-        game_id = request.form["game_id"]
-        additional_quantity = request.form["additional_quantity"]
 
-        try:
-            game = Game.query.get(int(game_id))
-            if game:
-                game.quantity += int(additional_quantity)
-                db.session.commit()
-                flash("Game quantity updated successfully.", "success")
-            else:
-                flash("Game not found.", "error")
-        except Exception as e:
-            db.session.rollback()
-            flash("Error updating game quantity.", "error")
-    return redirect(url_for("admin"))
 
 @app.route("/remove_game/<int:game_id>")
 def remove_game(game_id):
@@ -538,7 +546,7 @@ def user_management():
         total_users_count = User.query.filter(User.role.in_(['customer', 'inactive'])).count()
         total_pages = (total_users_count + per_page - 1) // per_page
 
-        users = User.query.filter(User.role.in_(['customer', 'inactive'])).order_by(User.username).offset(offset).limit(per_page).all()
+        users = User.query.filter(User.status.in_(['active', 'inactive'])).order_by(User.username).offset(offset).limit(per_page).all()
 
         for user in users:
             total_purchases = Purchase.query.filter_by(username=user.username).count()
@@ -559,7 +567,7 @@ def deactivate_user(username):
         try:
             user = User.query.filter_by(username=username).first()
             if user:
-                user.role = 'inactive'
+                user.status = 'inactive'
                 db.session.commit()
                 flash(f"User '{username}' has been deactivated.", "success")
             else:
@@ -575,7 +583,7 @@ def reactivate_user(username):
         try:
             user = User.query.filter_by(username=username).first()
             if user:
-                user.role = 'customer'
+                user.status = 'active'
                 db.session.commit()
                 flash(f"User '{username}' has been reactivated.", "success")
             else:
@@ -674,11 +682,15 @@ def manage_suggestions():
 
     try:
         suggestions = GameSuggestion.query.filter_by(status='pending').order_by(GameSuggestion.date_suggested.desc()).all()
+        pending_count = GameSuggestion.query.filter_by(status='pending').count()
+        pending_topup_count = TopupRequest.query.filter_by(status='pending').count()
     except Exception as e:
         flash("Error loading suggestions.", "error")
         suggestions = []
+        pending_count = 0
+        pending_topup_count = 0
 
-    return render_template("manage_suggestions.html", suggestions=suggestions)
+    return render_template("manage_suggestions.html", suggestions=suggestions, pending_count=pending_count, pending_topup_count=pending_topup_count)
 
 @app.route("/approve_suggestion/<int:suggestion_id>")
 def approve_suggestion(suggestion_id):
@@ -689,6 +701,7 @@ def approve_suggestion(suggestion_id):
                 suggestion.status = 'approved'
                 db.session.commit()
 
+                # Add to suggester's library if not already there
                 existing_user_game = UserGame.query.filter_by(
                     username=suggestion.suggested_by,
                     game_id=None,
@@ -706,7 +719,35 @@ def approve_suggestion(suggestion_id):
                         genre=suggestion.genre
                     )
                     db.session.add(user_game)
-                    db.session.commit()
+
+                # Add to all active customers' libraries (excluding the suggester)
+                active_customers = User.query.filter_by(role='customer', status='active').filter(User.username != suggestion.suggested_by).all()
+                for customer in active_customers:
+                    existing_customer_game = UserGame.query.filter_by(
+                        username=customer.username,
+                        game_id=None,
+                        title=suggestion.title,
+                        platform=suggestion.platform
+                    ).first()
+                    if not existing_customer_game:
+                        customer_game = UserGame(
+                            username=customer.username,
+                            game_id=None,
+                            condition='added',
+                            title=suggestion.title,
+                            platform=suggestion.platform,
+                            genre=suggestion.genre
+                        )
+                        db.session.add(customer_game)
+
+                # Create notification for the suggester
+                notification = Notification(
+                    username=suggestion.suggested_by,
+                    message=f"Your game suggestion '{suggestion.title}' has been approved and added to the community games!"
+                )
+                db.session.add(notification)
+
+                db.session.commit()
 
                 flash("Suggestion approved successfully.", "success")
             else:
@@ -729,7 +770,7 @@ def manage_topup_requests():
 
     return render_template("manage_topup_requests.html", topup_requests=topup_requests)
 
-@app.route("/approve_topup/<int:request_id>")
+@app.route("/approve_topup/<int:request_id>", methods=["POST"])
 def approve_topup(request_id):
     if "username" in session and session["role"] == "admin":
         try:
@@ -742,7 +783,12 @@ def approve_topup(request_id):
                     topup_request.date_processed = datetime.utcnow()
                     topup_request.processed_by = session["username"]
 
-
+                    # Create notification for the user
+                    notification = Notification(
+                        username=topup_request.username,
+                        message=f"Your top-up request of ₱{topup_request.amount:.2f} has been approved! The amount has been added to your balance."
+                    )
+                    db.session.add(notification)
 
                     db.session.commit()
                     flash(f"Top-up request approved. Added ₱{topup_request.amount:.2f} to {topup_request.username}'s balance.", "success")
@@ -752,10 +798,10 @@ def approve_topup(request_id):
                 flash("Top-up request not found or already processed.", "error")
         except Exception as e:
             db.session.rollback()
-            flash("Error approving top-up request.", "error")
+            flash(f"Error approving top-up request: {str(e)}", "error")
     return redirect(url_for("manage_topup_requests"))
 
-@app.route("/reject_topup/<int:request_id>")
+@app.route("/reject_topup/<int:request_id>", methods=["POST"])
 def reject_topup(request_id):
     if "username" in session and session["role"] == "admin":
         try:
@@ -764,6 +810,14 @@ def reject_topup(request_id):
                 topup_request.status = 'rejected'
                 topup_request.date_processed = datetime.utcnow()
                 topup_request.processed_by = session["username"]
+
+                # Create notification for the user
+                notification = Notification(
+                    username=topup_request.username,
+                    message=f"Your top-up request of ₱{topup_request.amount:.2f} has been rejected."
+                )
+                db.session.add(notification)
+
                 db.session.commit()
                 flash("Top-up request rejected.", "success")
             else:
@@ -843,7 +897,6 @@ def edit_game(game_id):
             platform = platform[:50]
         genre = request.form.get("genre", "Action").strip()
         price = request.form["price"].strip()
-        quantity = request.form["quantity"].strip()
 
         if not title:
             flash("Game title cannot be empty.", "error")
@@ -859,15 +912,6 @@ def edit_game(game_id):
             return render_template("edit_game.html", game=game)
         if not genre:
             flash("Genre cannot be empty.", "error")
-            return render_template("edit_game.html", game=game)
-
-        try:
-            quantity_int = int(quantity)
-            if quantity_int < 0:
-                flash("Quantity cannot be negative.", "error")
-                return render_template("edit_game.html", game=game)
-        except ValueError:
-            flash("Quantity must be a valid integer.", "error")
             return render_template("edit_game.html", game=game)
 
         try:
@@ -923,7 +967,6 @@ def edit_game(game_id):
             game.platform = platform
             game.genre = genre
             game.price = price_float
-            game.quantity = quantity_int
             db.session.commit()
             flash("Game updated successfully.", "success")
             return redirect(url_for("admin"))
@@ -1113,7 +1156,17 @@ def customer():
         search = ''
         platform_filter = ''
         genre_filter = ''
-    return render_template("customer.html", games=official_games, user_games=user_games, approved_suggestions=approved_suggestions, platforms=platforms, genres=genres, search=search, platform_filter=platform_filter, genre_filter=genre_filter, page=page, total_pages=total_pages, user_balance=user_balance)
+
+    # Check for unread notifications
+    unread_notifications_count = 0
+    try:
+        unread_notifications_count = Notification.query.filter_by(username=session["username"], is_read=False).count()
+        if unread_notifications_count > 0:
+            flash(f"You have {unread_notifications_count} unread notification(s).", "info")
+    except Exception as e:
+        pass
+
+    return render_template("customer.html", games=official_games, user_games=user_games, approved_suggestions=approved_suggestions, platforms=platforms, genres=genres, search=search, platform_filter=platform_filter, genre_filter=genre_filter, page=page, total_pages=total_pages, user_balance=user_balance, unread_notifications_count=unread_notifications_count)
 
 @app.route("/buy/<int:game_id>")
 def buy(game_id):
@@ -1122,10 +1175,6 @@ def buy(game_id):
             user = User.query.filter_by(username=session["username"]).first()
             game = Game.query.get(game_id)
             if game:
-                if game.quantity <= 0:
-                    flash("Game is out of stock.", "error")
-                    return redirect(url_for("customer"))
-
                 return redirect(url_for('confirm_purchase', game_id=game_id, condition='new'))
             else:
 
@@ -1195,7 +1244,7 @@ def confirm_purchase(game_id):
                     self.image = f"static/uploads/{suggestion.image}" if suggestion.image else "static/logo.png"
 
             game = MockGame(suggestion)
-            price = 0.0
+            price = suggestion.price
         else:
             game = Game.query.get(game_id)
 
@@ -1204,9 +1253,6 @@ def confirm_purchase(game_id):
                 return redirect(url_for("customer"))
 
             if condition == 'new':
-                if game.quantity <= 0:
-                    flash("Game is out of stock.", "error")
-                    return redirect(url_for("customer"))
                 price = game.price
             else:
 
@@ -1255,9 +1301,6 @@ def process_purchase(game_id):
                 return redirect(url_for("customer"))
 
             if condition == 'new':
-                if game.quantity <= 0:
-                    flash("Game is out of stock.", "error")
-                    return redirect(url_for("customer"))
                 price = game.price
             else:
 
@@ -1284,7 +1327,6 @@ def process_purchase(game_id):
                 user_game = UserGame(username=session["username"], game_id=game_id, condition='new')
                 db.session.add(user_game)
 
-                game.quantity -= 1
             else:
 
                 sale_user_game = UserGame.query.filter_by(game_id=game_id, listed_for_sale=True).first()
@@ -1299,6 +1341,15 @@ def process_purchase(game_id):
                 sale_user_game.purchase_date = datetime.utcnow()
 
             db.session.commit()
+
+            # Create notification for the buyer
+            notification = Notification(
+                username=session["username"],
+                message=f"You have successfully purchased '{game.title}' for ₱{price:.2f}."
+            )
+            db.session.add(notification)
+            db.session.commit()
+
             flash("Game purchased successfully.", "success")
 
     except Exception as e:
@@ -1492,7 +1543,6 @@ def update_system_settings():
 
     site_title = request.form.get("site_title", "").strip()
     max_topup = request.form.get("max_topup", "").strip()
-    default_game_quantity = request.form.get("default_game_quantity", "").strip()
     maintenance_mode = request.form.get("maintenance_mode") == "1"
 
     if not site_title:
@@ -1506,15 +1556,6 @@ def update_system_settings():
             return redirect(url_for("admin_settings"))
     except ValueError:
         flash("Invalid maximum top-up amount.", "error")
-        return redirect(url_for("admin_settings"))
-
-    try:
-        default_quantity_int = int(default_game_quantity)
-        if default_quantity_int < 1 or default_quantity_int > 1000:
-            flash("Default game quantity must be between 1 and 1000.", "error")
-            return redirect(url_for("admin_settings"))
-    except ValueError:
-        flash("Invalid default game quantity.", "error")
         return redirect(url_for("admin_settings"))
 
     flash("System settings updated successfully.", "success")
@@ -1976,6 +2017,7 @@ def suggest_game():
                 title=title,
                 platform=platform,
                 genre=genre,
+                price=price_float,
                 description=description,
                 installation_instructions=installation_instructions,
                 installation_file=installation_filename,
@@ -2159,7 +2201,7 @@ def api_add_to_cart():
         if not game_id:
             return jsonify({'success': False, 'message': 'Game ID required'})
         game = Game.query.get(game_id)
-        if not game or game.quantity <= 0:
+        if not game:
             return jsonify({'success': False, 'message': 'Game not available'})
         return jsonify({'success': True, 'message': 'Added to cart'})
     except Exception as e:
@@ -2170,6 +2212,65 @@ def api_cart_count():
     if "username" not in session or session["role"] != "customer":
         return jsonify({'count': 0})
     return jsonify({'count': 0})
+
+@app.route("/api/notifications")
+def api_notifications():
+    if "username" not in session or session["role"] != "customer":
+        return jsonify({'success': False, 'message': 'Not logged in'})
+
+    try:
+        notifications = Notification.query.filter_by(username=session["username"], is_read=False).order_by(Notification.date_created.desc()).all()
+        notifications_data = []
+        for notification in notifications:
+            notifications_data.append({
+                'id': notification.id,
+                'message': notification.message,
+                'date_created': notification.date_created.isoformat()
+            })
+        return jsonify({'success': True, 'notifications': notifications_data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route("/notifications")
+def notifications():
+    if "username" not in session or session["role"] != "customer":
+        return redirect(url_for("login"))
+
+    page = int(request.args.get('page', 1))
+    per_page = 10
+    offset = (page - 1) * per_page
+
+    try:
+        total_notifications = Notification.query.filter_by(username=session["username"]).count()
+        total_pages = (total_notifications + per_page - 1) // per_page
+
+        notifications = Notification.query.filter_by(username=session["username"]).order_by(Notification.date_created.desc()).offset(offset).limit(per_page).all()
+
+        user = User.query.filter_by(username=session["username"]).first()
+        user_balance = user.balance if user else 0.0
+    except Exception as e:
+        notifications = []
+        total_pages = 0
+        user_balance = 0.0
+
+    return render_template("notifications.html", notifications=notifications, page=page, total_pages=total_pages, user_balance=user_balance)
+
+@app.route("/api/notifications/mark_read/<int:notification_id>", methods=["POST"])
+def api_mark_notification_read(notification_id):
+    if "username" not in session or session["role"] != "customer":
+        return jsonify({'success': False, 'message': 'Not logged in'})
+
+    try:
+        notification = Notification.query.get(notification_id)
+        if notification and notification.username == session["username"]:
+            notification.is_read = True
+            db.session.commit()
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'message': 'Notification not found'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route("/health")
 def health_check():

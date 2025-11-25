@@ -139,6 +139,7 @@
         }
         .file-input-label i {
             margin-right: 8px;
+        }
         .file-name {
             margin-top: 5px;
             font-size: 14px;
@@ -162,7 +163,6 @@
     </style>
 </head>
 <body>
-    <a href="#main-content" class="skip-link">Skip to main content</a>
 
     <header class="header-nav">
         <div class="logo">
@@ -170,7 +170,7 @@
             GameSystem Admin
         </div>
         <div class="nav-links">
-            <a href="{{ url_for('admin') }}"><i class="fas fa-arrow-left icon"></i>Back to Dashboard</a>
+            <a href="{{ url_for('admin') }}"><i class="fas fa-arrow-left icon"></i>Dashboard</a>
             <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
         </div>
     </header>

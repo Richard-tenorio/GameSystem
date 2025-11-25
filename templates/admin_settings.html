@@ -7,10 +7,116 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="{{ url_for('static', filename='toast.js') }}" defer></script>
     <style>
-        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
+        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; max-width: 400px; }
         .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .error-text { color: red; font-size: 14px; margin-top: -5px; margin-bottom: 10px; }
+        .box form {
+            text-align: center;
+        }
+        .box form div {
+            margin-bottom: 8px;
+        }
+        .box form div label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            text-align: left;
+        }
+        .box form button {
+            margin: 20px auto 0;
+            display: block;
+            font-weight: bold;
+        }
+        .card.box {
+            max-width: 450px;
+            margin: 0 auto;
+        }
+        .box form input, .box form select, .box form textarea {
+            width: 100%;
+            max-width: 300px;
+            padding: 10px 15px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #2a2a2a;
+            color: #f0f0f0;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .box form input:focus, .box form select:focus, .box form textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+        }
+        .box form textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            max-width: 400px;
+        }
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        .file-input-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 15px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #2a2a2a;
+            color: #f0f0f0;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .file-input-label:hover {
+            border-color: #007bff;
+            background: #333;
+        }
+        .file-input-label i {
+            margin-right: 8px;
+        }
+        .file-name {
+            margin-top: 5px;
+            font-size: 14px;
+            color: #888;
+            text-align: left;
+        }
+        input[type="checkbox"] {
+            display: none;
+        }
+        .toggle-container {
+            position: relative;
+            display: inline-block;
+        }
+        .toggle-button {
+            display: inline-block;
+            padding: 10px 15px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #2a2a2a;
+            color: #f0f0f0;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .toggle-button:hover {
+            border-color: #007bff;
+            background: #333;
+        }
+        input[type="checkbox"]:checked + .toggle-button {
+            background: #007bff;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -21,14 +127,6 @@
         </div>
         <div class="nav-links">
             <a href="{{ url_for('admin') }}"><i class="fas fa-tachometer-alt icon"></i>Dashboard</a>
-            {% if pending_count > 0 %}
-            <a href="{{ url_for('manage_suggestions') }}" class="notification-link">
-                <i class="fas fa-bell icon"></i>Suggestions
-                <span class="notification-badge">{{ pending_count }}</span>
-            </a>
-            {% else %}
-            <a href="{{ url_for('manage_suggestions') }}"><i class="fas fa-list icon"></i>Suggestions</a>
-            {% endif %}
             <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
         </div>
     </header>
@@ -44,20 +142,23 @@
         {% endif %}
 
         <section class="section">
-            <div class="card">
+            <div class="card box">
                 <h2><i class="fas fa-key icon"></i>Change Password</h2>
                 <form method="post">
-                    <label for="current_password">Current Password:</label>
-                    <input type="password" id="current_password" name="current_password" required>
+                    <div>
+                        <label for="current_password"><i class="fas fa-lock icon" aria-hidden="true"></i>Current Password:</label>
+                        <input type="password" id="current_password" name="current_password" placeholder="Enter current password" required autocomplete="current-password">
+                    </div>
 
-                    <label for="new_password">New Password:</label>
-                    <input type="password" id="new_password" name="new_password" required>
-                    <small style="color: #666; font-size: 12px;">
-                        Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one digit, and one special character.
-                    </small>
+                    <div>
+                        <label for="new_password"><i class="fas fa-key icon" aria-hidden="true"></i>New Password:</label>
+                        <input type="password" id="new_password" name="new_password" placeholder="Enter new password" required autocomplete="new-password">
+                    </div>
 
-                    <label for="confirm_password">Confirm New Password:</label>
-                    <input type="password" id="confirm_password" name="confirm_password" required>
+                    <div>
+                        <label for="confirm_password"><i class="fas fa-check-circle icon" aria-hidden="true"></i>Confirm New Password:</label>
+                        <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm new password" required autocomplete="new-password">
+                    </div>
 
                     <button type="submit"><i class="fas fa-save icon"></i>Update Password</button>
                 </form>
@@ -65,15 +166,22 @@
         </section>
 
         <section class="section">
-            <div class="card">
+            <div class="card box">
                 <h2><i class="fas fa-image icon"></i>Change Logo</h2>
                 <form method="post" action="{{ url_for('change_logo') }}" enctype="multipart/form-data">
-            <p>Current logo: <img src="{{ url_for('static', filename='logo.png') }}" alt="Current Logo" style="height: 40px; vertical-align: middle;"></p>
+                    <p>Current logo: <img src="{{ url_for('static', filename='logo.png') }}" alt="Current Logo" style="height: 40px; vertical-align: middle;"></p>
 
-            <input type="file" name="logo" accept="image/*" required>
-            <div class="error-text">Supported formats: PNG, JPG, JPEG, GIF, WebP. Recommended size: 200x200px or smaller.</div>
-
-            <label><input type="checkbox" name="confirm_logo" required> Confirm change logo</label>
+                    <div>
+                        <label for="logo"><i class="fas fa-upload icon" aria-hidden="true"></i>Logo Image:</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="logo" name="logo" accept="image/*" required>
+                            <label for="logo" class="file-input-label">
+                                <i class="fas fa-upload"></i> Choose a file
+                            </label>
+                        </div>
+                        <div id="logo-file-name" class="file-name">No file chosen</div>
+                        <div class="error-text">Supported formats: PNG, JPG, JPEG, GIF, WebP. Recommended size: 200x200px or smaller.</div>
+                    </div>
 
                     <button type="submit"><i class="fas fa-upload icon"></i>Update Logo</button>
                 </form>
@@ -81,33 +189,61 @@
         </section>
 
         <section class="section">
-            <div class="card">
+            <div class="card box">
                 <h2><i class="fas fa-cogs icon"></i>System Settings</h2>
                 <form method="post" action="{{ url_for('update_system_settings') }}">
-            <label for="site_title">Site Title:</label>
-            <input type="text" id="site_title" name="site_title" value="GameSystem" required>
+                    <div>
+                        <label for="site_title"><i class="fas fa-globe icon" aria-hidden="true"></i>Site Title:</label>
+                        <input type="text" id="site_title" name="site_title" placeholder="Enter site title" value="GameSystem" required>
+                    </div>
 
-            <label for="max_topup">Maximum Top-up Amount (₱):</label>
-            <input type="number" id="max_topup" name="max_topup" value="50000" min="1000" max="100000" required>
+                    <div>
+                        <label for="max_topup"><i class="fas fa-peso-sign icon" aria-hidden="true"></i>Maximum Top-up Amount (₱):</label>
+                        <input type="number" id="max_topup" name="max_topup" placeholder="50000" value="50000" min="1000" max="100000" required>
+                    </div>
 
-            <label for="default_game_quantity">Default Game Quantity:</label>
-            <input type="number" id="default_game_quantity" name="default_game_quantity" value="10" min="1" max="1000" required>
+                    <div>
+                        <label for="default_game_quantity"><i class="fas fa-boxes icon" aria-hidden="true"></i>Default Game Quantity:</label>
 
-            <label><input type="checkbox" name="maintenance_mode" value="1"> Enable Maintenance Mode</label>
+                    </div>
 
-            <button type="submit"><i class="fas fa-save icon"></i>Save Settings</button>
+                    <div class="toggle-container">
+                        <input type="checkbox" id="maintenance_mode" name="maintenance_mode" value="1">
+                        <label for="maintenance_mode" class="toggle-button"><i class="fas fa-tools icon" aria-hidden="true"></i>Enable Maintenance Mode</label>
+                    </div>
+
+                    <button type="submit"><i class="fas fa-save icon"></i>Save Settings</button>
                 </form>
             </div>
         </section>
 
         <section class="section">
-            <div class="card">
+            <div class="card box">
                 <h2><i class="fas fa-info-circle icon"></i>Account Information</h2>
-                <p><strong>Username:</strong> {{ session['username'] }}</p>
-                <p><strong>Role:</strong> Administrator</p>
-                <p><strong>Last Login:</strong> Current Session</p>
+                <div style="text-align: left; padding: 20px;">
+                    <p><strong>Username:</strong> {{ session['username'] }}</p>
+                    <p><strong>Role:</strong> Administrator</p>
+                    <p><strong>Last Login:</strong> Current Session</p>
+                </div>
             </div>
         </section>
     </main>
+
+    <script>
+        // File input handling
+        document.getElementById('logo').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+            document.getElementById('logo-file-name').textContent = fileName;
+        });
+
+        // Password requirements display on Shift+Enter
+        document.getElementById('new_password').addEventListener('keydown', function(e) {
+            if (e.shiftKey && e.key === 'Enter') {
+                e.preventDefault();
+                alert('Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one digit, and one special character.');
+            }
+        });
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

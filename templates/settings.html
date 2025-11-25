@@ -149,7 +149,7 @@
                 <h3>Account Balance</h3>
                 <div class="balance-display">
                     <p>Current Balance</p>
-                    <div class="balance-amount">${{ "%.2f"|format(session.get('balance', 0.0)) }}</div>
+                    <div class="balance-amount">₱{{ "%.2f"|format(user_balance) }}</div>
                 </div>
                 <p><em>Note: Contact an administrator to add credits to your account.</em></p>
             </div>

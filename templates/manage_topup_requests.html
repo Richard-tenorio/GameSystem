@@ -139,17 +139,16 @@
     </style>
 </head>
 <body>
-    <div class="header-nav">
+    <header class="header-nav">
         <div class="logo">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameHub Logo" style="height: 40px; width: auto;">
-            <span>GameSystem</span>
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo">
+            GameSystem Admin
         </div>
-        <div class="nav-links-right">
-            <a href="{{ url_for('user_management') }}">User Management</a>
-            <a href="{{ url_for('admin') }}">Dashboard</a>
-            <a href="{{ url_for('logout') }}">Logout</a>
+        <div class="nav-links">
+            <a href="{{ url_for('admin') }}"><i class="fas fa-tachometer-alt icon"></i>Dashboard</a>
+            <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt icon"></i>Logout</a>
         </div>
-    </div>
+    </header>
 
     <div class="box">
         <h1>Manage Top-up Requests</h1>
@@ -190,12 +189,16 @@
                     <p style="color: #666; text-align: center;">No screenshot provided</p>
                 {% endif %}
                 <div class="actions">
-                    <a href="{{ url_for('approve_topup', request_id=request.id) }}" class="btn btn-approve">
-                        <i class="fas fa-check"></i> Approve
-                    </a>
-                    <a href="{{ url_for('reject_topup', request_id=request.id) }}" class="btn btn-reject">
-                        <i class="fas fa-times"></i> Reject
-                    </a>
+                    <form method="POST" action="{{ url_for('approve_topup', request_id=request.id) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-approve">
+                            <i class="fas fa-check"></i> Approve
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('reject_topup', request_id=request.id) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-reject">
+                            <i class="fas fa-times"></i> Reject
+                        </button>
+                    </form>
                 </div>
             </div>
         {% else %}

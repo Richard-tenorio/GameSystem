@@ -30,7 +30,7 @@
         {% endif %}
     {% endwith %}
 
-    <h2>Customer Accounts</h2>
+    <h2>User Accounts</h2>
     {% if users %}
     <table>
         <thead>
@@ -50,8 +50,8 @@
             <tr>
                 <td>{{ user.username }}</td>
                 <td>
-                    <span class="status-{{ user.role }}">
-                        {{ user.role.title() }}
+                    <span class="status-{{ user.status }}">
+                        {{ user.status.title() }}
                     </span>
                 </td>
                 <td>{{ user.total_purchases }}</td>
@@ -60,9 +60,9 @@
                 <td>{{ user.active_purchases }}</td>
                 <td>₱{{ "%.2f"|format(user.balance) }}</td>
                 <td>
-                    {% if user.role == 'customer' %}
+                    {% if user.status == 'active' %}
                         <button type="button" class="btn btn-warning btn-uniform" onclick="if(confirm('Are you sure you want to deactivate this user?')) { window.location.href = '{{ url_for('deactivate_user', username=user.username) }}'; }">Deactivate</button>
-                    {% elif user.role == 'inactive' %}
+                    {% elif user.status == 'inactive' %}
                         <button type="button" class="btn btn-success btn-uniform" onclick="if(confirm('Are you sure you want to reactivate this user?')) { window.location.href = '{{ url_for('reactivate_user', username=user.username) }}'; }">Reactivate</button>
                     {% endif %}
                 </td>

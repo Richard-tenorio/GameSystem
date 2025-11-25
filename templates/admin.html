@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="{{ url_for('static', filename='toast.js') }}" defer></script>
     <style>
-        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; }
+        .flash { margin: 10px auto; padding: 10px; border-radius: 5px; width: 80%; max-width: 400px; }
         .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .error-text { color: red; font-size: 14px; margin-top: -5px; margin-bottom: 10px; }
@@ -25,11 +25,63 @@
             min-width: 18px;
             text-align: center;
         }
-        .topup-notification-link { position: relative; color: #17a2b8 !important; }
+        .topup-notification-link { position: relative; color: #ff6b6b !important; }
+        .box form {
+            text-align: center;
+        }
+        .box form div {
+            margin-bottom: 8px;
+        }
+        .box form div label {
+            display: block;
+            margin-bottom: 2px;
+            margin-left: 10px;
+            font-weight: bold;
+            text-align: left;
+            width: 100%;
+        }
+        .box form button {
+            margin: 20px auto 0;
+            display: block;
+            font-weight: bold;
+        }
+        .box form input, .box form select, .box form textarea {
+            width: 100%;
+            max-width: 400px;
+            padding: 10px 15px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #2a2a2a;
+            color: #f0f0f0;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .box form input:focus, .box form select:focus, .box form textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+        }
+        .box form textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .row div {
+            flex: 1;
+        }
+        .row.full div {
+            flex: none;
+            width: 100%;
+        }
         .file-input-wrapper {
             position: relative;
             display: inline-block;
             width: 100%;
+            max-width: 400px;
         }
         .file-input-wrapper input[type="file"] {
             position: absolute;
@@ -43,17 +95,17 @@
             align-items: center;
             justify-content: center;
             padding: 10px 15px;
-            border: 1px solid #ddd;
+            border: 1px solid #555;
             border-radius: 4px;
-            background: #f9f9f9;
-            color: #333;
+            background: #2a2a2a;
+            color: #f0f0f0;
             font-size: 16px;
             cursor: pointer;
             transition: all 0.3s ease;
         }
         .file-input-label:hover {
             border-color: #007bff;
-            background: #e9ecef;
+            background: #333;
         }
         .file-input-label i {
             margin-right: 8px;
@@ -73,18 +125,18 @@
             GameSystem Admin
         </div>
         <div class="nav-links">
-            {% if pending_count > 0 %}
+            {% if (pending_count | default(0)) > 0 %}
             <a href="{{ url_for('manage_suggestions') }}" class="notification-link">
                 <i class="fas fa-bell icon"></i>Suggestions
-                <span class="notification-badge">{{ pending_count }}</span>
+                <span class="notification-badge">{{ pending_count | default(0) }}</span>
             </a>
             {% else %}
             <a href="{{ url_for('manage_suggestions') }}"><i class="fas fa-list icon"></i>Suggestions</a>
             {% endif %}
-            {% if pending_topup_count > 0 %}
-            <a href="{{ url_for('manage_topup_requests') }}" class="topup-notification-link">
+            {% if (pending_topup_count | default(0)) > 0 %}
+            <a href="{{ url_for('manage_topup_requests') }}" class="notification-link">
                 <i class="fas fa-money-bill-wave icon"></i>Top-ups
-                <span class="notification-badge">{{ pending_topup_count }}</span>
+                <span class="notification-badge">{{ pending_topup_count | default(0) }}</span>
             </a>
             {% else %}
             <a href="{{ url_for('manage_topup_requests') }}"><i class="fas fa-money-bill-wave icon"></i>Top-ups</a>
@@ -143,59 +195,128 @@
 
 
     <section class="section">
-        <div class="card">
+        <div class="card box">
             <h2><i class="fas fa-plus-circle icon"></i>Add New Game</h2>
             <form method="post" action="{{ url_for('add_game') }}" enctype="multipart/form-data">
-                <table class="form-table">
-                    <tr>
-                        <td>
-                            <input type="text" name="title" placeholder="Game Title" value="{{ request.form.title or '' }}">
-                            {% if errors.title %}<div class="error-text">{{ errors.title }}</div>{% endif %}
-                        </td>
-                        <td>
-                            <select name="platform">
-                                <option value="">Select Platform</option>
-                                {% for platform_option in platforms %}
-                                    <option value="{{ platform_option }}" {% if request.form.platform == platform_option %}selected{% endif %}>{{ platform_option }}</option>
-                                {% endfor %}
-                            </select>
-                            {% if errors.platform %}<div class="error-text">{{ errors.platform }}</div>{% endif %}
-                        </td>
-                        <td>
-                            <select name="genre">
-                                <option value="">Select Genre</option>
-                                {% for genre in ['Action','Adventure','RPG','Strategy','Sports','Racing','Simulation','Puzzle','Horror','Fighting'] %}
-                                    <option value="{{ genre }}" {% if request.form.genre == genre %}selected{% endif %}>{{ genre }}</option>
-                                {% endfor %}
-                            </select>
-                            {% if errors.genre %}<div class="error-text">{{ errors.genre }}</div>{% endif %}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <input type="number" name="quantity" placeholder="Quantity" value="{{ request.form.quantity or '' }}">
-                            {% if errors.quantity %}<div class="error-text">{{ errors.quantity }}</div>{% endif %}
-                        </td>
-                        <td>
-                            <input type="number" step="0.01" name="price" placeholder="Price (e.g., 59.99)" value="{{ request.form.price or '' }}">
-                            {% if errors.price %}<div class="error-text">{{ errors.price }}</div>{% endif %}
-                        </td>
-                        <td></td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <input type="file" name="image" accept="image/*" required>
-                            {% if errors.image %}<div class="error-text">{{ errors.image }}</div>{% endif %}
-                        </td>
-                        <td>
-                            <input type="file" name="installation_file" accept=".exe,.msi,.zip,.rar,.7z,.bat,.cmd,.txt">
-                            {% if errors.installation_file %}<div class="error-text">{{ errors.installation_file }}</div>{% endif %}
-                        </td>
-                        <td></td>
-                    </tr>
-                </table>
-                <label><input type="checkbox" name="confirm" required> Confirm add game</label>
-                <button type="submit"><i class="fas fa-plus icon"></i>Add Game</button>
+                <div class="row">
+                    <div>
+                        <label for="title"><i class="fas fa-gamepad icon" aria-hidden="true"></i>Title:</label>
+                        <input type="text" id="title" name="title" placeholder="Enter game title" required maxlength="100" autocomplete="off">
+                    </div>
+                    <div>
+                        <label for="genre"><i class="fas fa-tags icon" aria-hidden="true"></i>Genre:</label>
+                        <select id="genre" name="genre">
+                            <option value="Action">Action</option>
+                            <option value="Adventure">Adventure</option>
+                            <option value="RPG">RPG</option>
+                            <option value="Strategy">Strategy</option>
+                            <option value="Simulation">Simulation</option>
+                            <option value="Sports">Sports</option>
+                            <option value="Racing">Racing</option>
+                            <option value="Puzzle">Puzzle</option>
+                            <option value="Horror">Horror</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div>
+                        <label for="platform"><i class="fas fa-desktop icon" aria-hidden="true"></i>Platform:</label>
+                        <select id="platform" name="platform" required>
+                            <option value="">Select a platform</option>
+                            <option value="PlayStation 1 (PS1)">PlayStation 1 (PS1)</option>
+                            <option value="PlayStation 2 (PS2)">PlayStation 2 (PS2)</option>
+                            <option value="PlayStation 3 (PS3)">PlayStation 3 (PS3)</option>
+                            <option value="PlayStation 4 (PS4 / Slim / Pro)">PlayStation 4 (PS4 / Slim / Pro)</option>
+                            <option value="PlayStation 5 (PS5 / Digital Edition)">PlayStation 5 (PS5 / Digital Edition)</option>
+                            <option value="PlayStation Portable (PSP)">PlayStation Portable (PSP)</option>
+                            <option value="PlayStation Vita (PS Vita)">PlayStation Vita (PS Vita)</option>
+                            <option value="PlayStation Portal (Remote device)">PlayStation Portal (Remote device)</option>
+                            <option value="Xbox (Original)">Xbox (Original)</option>
+                            <option value="Xbox 360">Xbox 360</option>
+                            <option value="Xbox One / One S / One X">Xbox One / One S / One X</option>
+                            <option value="Xbox Series S">Xbox Series S</option>
+                            <option value="Xbox Series X">Xbox Series X</option>
+                            <option value="Nintendo Entertainment System (NES)">Nintendo Entertainment System (NES)</option>
+                            <option value="Super Nintendo (SNES)">Super Nintendo (SNES)</option>
+                            <option value="Nintendo 64 (N64)">Nintendo 64 (N64)</option>
+                            <option value="Nintendo GameCube">Nintendo GameCube</option>
+                            <option value="Nintendo Wii">Nintendo Wii</option>
+                            <option value="Nintendo Wii U">Nintendo Wii U</option>
+                            <option value="Nintendo Switch">Nintendo Switch</option>
+                            <option value="Nintendo Switch OLED">Nintendo Switch OLED</option>
+                            <option value="Nintendo Switch Lite">Nintendo Switch Lite</option>
+                            <option value="Game Boy">Game Boy</option>
+                            <option value="Game Boy Color">Game Boy Color</option>
+                            <option value="Game Boy Advance">Game Boy Advance</option>
+                            <option value="Nintendo DS">Nintendo DS</option>
+                            <option value="Nintendo DS Lite">Nintendo DS Lite</option>
+                            <option value="DSi / DSi XL">DSi / DSi XL</option>
+                            <option value="Nintendo 3DS">Nintendo 3DS</option>
+                            <option value="Nintendo 3DS XL">Nintendo 3DS XL</option>
+                            <option value="New 2DS XL">New 2DS XL</option>
+                            <option value="Sega Master System">Sega Master System</option>
+                            <option value="Sega Genesis / Mega Drive">Sega Genesis / Mega Drive</option>
+                            <option value="Sega Saturn">Sega Saturn</option>
+                            <option value="Sega Dreamcast">Sega Dreamcast</option>
+                            <option value="Game Gear">Game Gear</option>
+                            <option value="Atari 2600">Atari 2600</option>
+                            <option value="Atari 5200">Atari 5200</option>
+                            <option value="Atari 7800">Atari 7800</option>
+                            <option value="Atari Jaguar">Atari Jaguar</option>
+                            <option value="Atari Lynx">Atari Lynx</option>
+                            <option value="Atari VCS (Modern re-release)">Atari VCS (Modern re-release)</option>
+                            <option value="Neo Geo">Neo Geo</option>
+                            <option value="Neo Geo Pocket">Neo Geo Pocket</option>
+                            <option value="TurboGrafx-16 (PC Engine)">TurboGrafx-16 (PC Engine)</option>
+                            <option value="Philips CD-i">Philips CD-i</option>
+                            <option value="Intellivision">Intellivision</option>
+                            <option value="ColecoVision">ColecoVision</option>
+                            <option value="Panasonic 3DO">Panasonic 3DO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="price"><i class="fas fa-peso-sign icon" aria-hidden="true"></i>Price:</label>
+                        <input type="number" id="price" name="price" placeholder="0.00" step="0.01" min="0" required autocomplete="off">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div>
+                        <label for="description" style="margin-left: 20px;"><i class="fas fa-comment icon" aria-hidden="true"></i>Description (optional):</label>
+                        <textarea id="description" name="description" placeholder="Describe the game or any additional details..." rows="3"></textarea>
+                    </div>
+                    <div>
+                        <label for="installation_instructions" style="margin-left: 20px;"><i class="fas fa-list icon" aria-hidden="true"></i>Installation Instructions:</label>
+                        <textarea id="installation_instructions" name="installation_instructions" placeholder="Provide step-by-step installation instructions for the game..." rows="4" required></textarea>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div>
+                        <label for="image" style="margin-left: 20px;"><i class="fas fa-image icon" aria-hidden="true"></i>Game Cover Image:</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="image" name="image" accept="image/*" required>
+                            <label for="image" class="file-input-label">
+                                <i class="fas fa-upload"></i> Choose a file
+                            </label>
+                        </div>
+                        <div id="file-name" class="file-name">No file chosen</div>
+                    </div>
+                    <div>
+                        <label for="installation_file" style="margin-left: 20px;"><i class="fas fa-file-upload icon" aria-hidden="true"></i>Installation File (optional):</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="installation_file" name="installation_file" accept=".txt,.exe,.msi,.zip,.rar,.7z,.bat,.cmd">
+                            <label for="installation_file" class="file-input-label">
+                                <i class="fas fa-folder-open"></i> Choose installation file
+                            </label>
+                        </div>
+                        <div id="install-file-name" class="file-name">No file chosen</div>
+                    </div>
+                </div>
+
+                <button type="submit"><i class="fas fa-plus icon" aria-hidden="true"></i>Add Game</button>
             </form>
         </div>
     </section>
@@ -210,8 +331,6 @@
         <th>Title</th>
         <th>Platform</th>
         <th>Genre</th>
-        <th>Available</th>
-        <th>Sold</th>
         <th>Price</th>
         <th>Actions</th>
     </tr>
@@ -222,8 +341,6 @@
         <td>{{ game.title }}</td>
         <td>{{ game.platform }}</td>
         <td>{{ game.genre }}</td>
-        <td>{{ game.quantity }}</td>
-        <td>{{ game.sold_count }}</td>
         <td>₱{{ "%.2f"|format(game.price) }}</td>
 
         <td>
@@ -279,7 +396,7 @@
             <td>{{ suggestion.suggested_by }}</td>
             <td><span style="color: green;">Approved</span></td>
             <td>
-                <a href="{{ url_for('reject_suggestion', suggestion_id=suggestion.id) }}" class="remove-link">Remove</a>
+                <button type="button" class="btn btn-danger btn-uniform" onclick="if(confirm('Are you sure you want to remove this community game?')) window.location.href='{{ url_for('reject_suggestion', suggestion_id=suggestion.id) }}'">Remove</button>
             </td>
         </tr>
         {% endfor %}
@@ -287,5 +404,19 @@
         </div>
     </section>
     </main>
+
+    <script>
+        // File input handling
+        document.getElementById('image').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+            document.getElementById('file-name').textContent = fileName;
+        });
+
+        document.getElementById('installation_file').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+            document.getElementById('install-file-name').textContent = fileName;
+        });
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

@@ -49,9 +49,7 @@
             GameSystem
         </div>
         <div class="nav-links">
-            <span class="balance-display">Balance: ₱{{ "%.2f"|format(user_balance) }}</span>
-            <a href="{{ url_for('customer') }}">Back to Games</a>
-            <a href="{{ url_for('profile') }}">Profile</a>
+            <a href="{{ url_for('customer') }}">Dashboard</a>
             <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')">Logout</a>
         </div>
     </header>
@@ -102,6 +100,11 @@
 
             <button type="submit" class="btn btn-primary">Submit Top-up Request</button>
         </form>
+
+        <div style="margin-top: 30px; text-align: center;">
+            <img src="{{ url_for('static', filename='fake qr.png') }}" alt="QR Code" style="max-width: 200px; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
+            <p style="margin-top: 10px; font-weight: bold; color: #f0f0f0;">Scan the QR code to complete your payment</p>
+        </div>
 
         <div style="margin-top: 30px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 8px;">
             <h3>Payment Information</h3>

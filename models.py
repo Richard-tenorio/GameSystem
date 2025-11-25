@@ -12,10 +12,11 @@ class User(db.Model):
     age = db.Column(db.Integer, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(20), default='customer')
+    status = db.Column(db.String(20), default='active')
     balance = db.Column(db.Float, nullable=False, default=100.0)
     reset_token = db.Column(db.String(100), nullable=True)
     reset_expires = db.Column(db.DateTime, nullable=True)
-    # Temporarily commented out OTP fields
+    # OTP fields removed - using session storage instead
     # otp_code = db.Column(db.String(6), nullable=True)
     # otp_expires = db.Column(db.DateTime, nullable=True)
 
@@ -29,7 +30,6 @@ class Game(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     platform = db.Column(db.String(50), nullable=False)
-    quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False, default=0.0)
     genre = db.Column(db.String(50), nullable=True)
     image = db.Column(db.String(255), nullable=True, default=None)

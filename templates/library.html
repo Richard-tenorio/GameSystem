@@ -32,9 +32,7 @@
             <button type="submit" class="btn btn-primary btn-uniform">Search</button>
         </form>
         <div class="nav-links">
-            <span class="balance-display">Balance: ₱{{ "%.2f"|format(user_balance) }}</span>
             <a href="{{ url_for('customer') }}">Dashboard</a>
-            <a href="{{ url_for('profile') }}">Profile</a>
             <a href="{{ url_for('logout') }}" onclick="return confirm('Are you sure you want to logout?')">Logout</a>
         </div>
     </header>
@@ -52,7 +50,7 @@
     {% if purchased_games %}
         <div class="games-grid">
             {% for user_game in purchased_games %}
-            <div class="game-card" onclick="openModal('{{ user_game.game.title }}', '{{ user_game.game.platform }}', '{{ user_game.game.genre or 'N/A' }}', '{{ user_game.condition }}', '{{ "%.2f"|format(user_game.game.price) }}', '{{ user_game.game.image }}', '{{ url_for('sale', user_game_id=user_game.id) }}', '{{ url_for('rate_game', game_id=user_game.game.id) }}', 'true', '{{ user_game.game.id }}', '')">
+            <div class="game-card" data-title="{{ user_game.game.title }}" data-platform="{{ user_game.game.platform }}" data-genre="{{ user_game.game.genre or 'N/A' }}" data-status="{{ user_game.condition }}" data-price="{{ "%.2f"|format(user_game.game.price) }}" data-image="{{ user_game.game.image }}" data-sell-url="{{ url_for('sale', user_game_id=user_game.id) }}" data-rate-url="{{ url_for('rate_game', game_id=user_game.game.id) }}" data-can-buy="true" data-game-id="{{ user_game.game.id }}" onclick="openModal(this)">
                 <img src="{% if user_game.game.image %}static/uploads/{{ user_game.game.image }}{% else %}{{ url_for('static', filename='logo.png') }}{% endif %}" alt="{{ user_game.game.title }}" class="game-image">
                 <div class="game-info">
                     <h3>{{ user_game.game.title }}</h3>
@@ -92,7 +90,7 @@
     <h2>My Created Games</h2>
     <div class="games-grid">
         {% for user_game in created_games %}
-        <div class="game-card suggested-game-card" onclick="openModal('{{ user_game.title }}', '{{ user_game.platform }}', '{{ user_game.genre or 'N/A' }}', '{% if user_game.suggestion and user_game.suggestion.status == 'approved' %}Approved{% else %}Pending{% endif %}', 'Your Creation', '{% if user_game.suggestion and user_game.suggestion.image %}static/uploads/{{ user_game.suggestion.image }}{% else %}{{ url_for('static', filename='logo.png') }}{% endif %}', '', '', 'false', '', '{% if user_game.suggestion %}{{ url_for('edit_user_suggestion', suggestion_id=user_game.suggestion.id) }}{% endif %}')">
+        <div class="game-card suggested-game-card" data-title="{{ user_game.title }}" data-platform="{{ user_game.platform }}" data-genre="{{ user_game.genre or 'N/A' }}" data-quantity="{% if user_game.suggestion and user_game.suggestion.status == 'approved' %}Approved{% else %}Pending{% endif %}" data-price="Your Creation" data-image="{% if user_game.suggestion and user_game.suggestion.image %}static/uploads/{{ user_game.suggestion.image }}{% else %}{{ url_for('static', filename='logo.png') }}{% endif %}" data-edit-url="{% if user_game.suggestion %}{{ url_for('edit_user_suggestion', suggestion_id=user_game.suggestion.id) }}{% endif %}" onclick="openModal(this)">
             <img src="{% if user_game.suggestion and user_game.suggestion.image %}static/uploads/{{ user_game.suggestion.image }}{% else %}{{ url_for('static', filename='logo.png') }}{% endif %}" alt="{{ user_game.title }}" class="game-image">
             <div class="game-info">
                 <h3>{{ user_game.title }}</h3>
@@ -118,9 +116,10 @@
                 <div class="modal-image-section">
                     <img id="modalImage" src="{{ url_for('static', filename='logo.png') }}" alt="GameSystem Logo" class="modal-image">
                     <div class="modal-actions">
-                        <button id="modalSellLink" onclick="window.location.href=''" class="btn btn-warning btn-uniform">Sell Game</button>
-                        <button id="modalRateLink" onclick="window.location.href=''" class="btn btn-success btn-uniform">Rate & Review</button>
-                        <button id="modalEditLink" onclick="window.location.href=''" class="btn btn-primary btn-uniform">Edit Game</button>
+                        <a id="modalBuyLink" href="" class="btn buy-btn">Buy Now</a>
+                        <a id="modalSellLink" href="" class="btn btn-warning btn-uniform">Sell Game</a>
+                        <a id="modalRateLink" href="" class="btn rate-btn">Rate & Review</a>
+                        <a id="modalEditLink" href="" class="btn btn-primary btn-uniform">Edit Game</a>
                     </div>
                 </div>
                 <div class="modal-details">
